@@ -515,16 +515,16 @@ export const ThreeCarViewer: React.FC<ThreeCarViewerProps> = ({
         </div>
       )}
 
-      {/* Top Left Badge */}
+      {/* Top Left Badge: Honest Procedural Preview Notice */}
       <div className="absolute top-4 left-4 z-10 flex flex-col pointer-events-none">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-[#CCFF00]/15 text-[#CCFF00] border border-[#CCFF00]/30">
             <span className="w-1.5 h-1.5 rounded-full bg-[#CCFF00] animate-pulse" />
-            3D Garage Studio
+            Procedural Geometry Preview
           </span>
-          <span className="text-[11px] text-zinc-400 font-mono-numbers">{year} Spec</span>
+          <span className="text-[10px] text-zinc-400 font-mono-numbers">GLTF/GLB Architecture Ready</span>
         </div>
-        <h3 className="text-lg md:text-xl font-bold text-white tracking-tight mt-1">
+        <h3 className="text-sm md:text-base font-bold text-white tracking-tight mt-1">
           {carName} <span className="text-zinc-400 font-normal">{variant}</span>
         </h3>
       </div>

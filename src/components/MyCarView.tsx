@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Vehicle, CalculatedEconomics, OwnershipProfile } from '../types';
 import { ThreeCarViewer } from './ThreeCarViewer';
+import { CarPhotoViewer } from './CarPhotoViewer';
 import { formatINR } from '../utils/formatters';
 
 interface MyCarViewProps {
@@ -92,23 +93,16 @@ export const MyCarView: React.FC<MyCarViewProps> = ({
             />
           </div>
         ) : (
-          <div 
-            onClick={() => setIsSpecsOpen(true)}
-            className="relative h-60 sm:h-72 w-full overflow-hidden cursor-pointer"
-            title="Tap to view vehicle specifications"
-          >
-            <img
-              src={vehicle.image}
-              alt={`${vehicle.make} ${vehicle.model}`}
-              className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D12] via-transparent to-black/20 pointer-events-none" />
-            
-            {/* Tap to inspect badge */}
-            <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/70 backdrop-blur-md text-[10px] font-bold text-zinc-300 border border-white/10">
+          <div className="relative w-full">
+            <CarPhotoViewer vehicle={vehicle} />
+            <button
+              onClick={() => setIsSpecsOpen(true)}
+              className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/70 backdrop-blur-md text-[10px] font-bold text-zinc-300 border border-white/10 hover:text-white cursor-pointer"
+              title="Tap to view vehicle specifications"
+            >
               <Info className="w-3 h-3 text-[#CCFF00]" />
               <span>Tap for specs</span>
-            </div>
+            </button>
           </div>
         )}
 

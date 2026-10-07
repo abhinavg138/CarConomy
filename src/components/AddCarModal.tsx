@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Car, Check, Calendar, Gauge, DollarSign, Sparkles, ArrowRight } from 'lucide-react';
 import { Vehicle, FuelType } from '../types';
+import { INITIAL_VEHICLES } from '../data/mockData';
 
 interface AddCarModalProps {
   isOpen: boolean;
@@ -9,18 +10,17 @@ interface AddCarModalProps {
 }
 
 const PRESET_POPULAR_MODELS = [
-  { make: 'BMW', model: '3 Series', variant: '330i M Sport', price: 5500000, mileage: 13.8, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Mercedes-Benz', model: 'C-Class', variant: 'C 200', price: 6150000, mileage: 12.4, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Audi', model: 'A4', variant: '40 TFSI', price: 4650000, mileage: 13.2, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Toyota', model: 'Camry', variant: 'Hybrid 2.5', price: 4620000, mileage: 19.1, fuel: 'Hybrid' as FuelType, img: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Porsche', model: 'Macan', variant: 'GTS Performance', price: 8800000, mileage: 10.2, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'BMW', model: 'i4', variant: 'eDrive40 Gran Coupe', price: 7250000, mileage: 5.8, fuel: 'EV' as FuelType, img: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Toyota', model: 'Fortuner', variant: 'Legender 4x4 AT', price: 4450000, mileage: 12.2, fuel: 'Diesel' as FuelType, img: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Mahindra', model: 'XUV700', variant: 'AX7L Diesel AT', price: 2650000, mileage: 14.5, fuel: 'Diesel' as FuelType, img: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Hyundai', model: 'Creta', variant: 'SX(O) 1.5 Turbo', price: 1980000, mileage: 15.4, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Tata', model: 'Nexon', variant: 'Fearless+ DCA', price: 1450000, mileage: 16.5, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Skoda', model: 'Superb', variant: 'L&K 2.0 TSI', price: 3850000, mileage: 14.8, fuel: 'Petrol' as FuelType, img: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=1400&q=85' },
-  { make: 'Hyundai', model: 'Ioniq 5', variant: 'Long Range RWD', price: 4600000, mileage: 6.2, fuel: 'EV' as FuelType, img: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1400&q=85' },
+  { make: 'BMW', model: '3 Series', variant: '330i M Sport', price: 5500000, mileage: 13.8, fuel: 'Petrol' as FuelType, img: '/vehicles/bmw-3-series.jpg' },
+  { make: 'Mercedes-Benz', model: 'C-Class', variant: 'C 200', price: 6150000, mileage: 12.4, fuel: 'Petrol' as FuelType, img: '/vehicles/mercedes-c-class.jpg' },
+  { make: 'Audi', model: 'A4', variant: '40 TFSI', price: 4650000, mileage: 13.2, fuel: 'Petrol' as FuelType, img: '/vehicles/audi-a4.jpg' },
+  { make: 'Toyota', model: 'Camry', variant: 'Hybrid 2.5', price: 4620000, mileage: 19.1, fuel: 'Hybrid' as FuelType, img: '/vehicles/toyota-camry.jpg' },
+  { make: 'Porsche', model: 'Macan', variant: 'GTS Performance', price: 8800000, mileage: 10.2, fuel: 'Petrol' as FuelType, img: '/vehicles/porsche-macan.jpg' },
+  { make: 'BMW', model: 'i4', variant: 'eDrive40 Gran Coupe', price: 7250000, mileage: 5.8, fuel: 'EV' as FuelType, img: '/vehicles/bmw-i4.jpg' },
+  { make: 'Toyota', model: 'Fortuner', variant: 'Legender 4x4 AT', price: 4450000, mileage: 12.2, fuel: 'Diesel' as FuelType, img: '/vehicles/toyota-fortuner.jpg' },
+  { make: 'Mahindra', model: 'XUV700', variant: 'AX7L Diesel AT', price: 2650000, mileage: 14.5, fuel: 'Diesel' as FuelType, img: '/vehicles/mahindra-xuv700.png' },
+  { make: 'Hyundai', model: 'Creta', variant: 'SX(O) 1.5 Turbo', price: 1980000, mileage: 15.4, fuel: 'Petrol' as FuelType, img: '/vehicles/hyundai-creta.jpg' },
+  { make: 'Tata', model: 'Nexon', variant: 'Fearless+ DCA', price: 1450000, mileage: 16.5, fuel: 'Petrol' as FuelType, img: '/vehicles/tata-nexon.jpg' },
+  { make: 'Skoda', model: 'Superb', variant: 'L&K 2.0 TSI', price: 3850000, mileage: 14.8, fuel: 'Petrol' as FuelType, img: '/vehicles/skoda-superb.jpg' },
 ];
 
 export const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onAddCar }) => {
@@ -59,11 +59,37 @@ export const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onAdd
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Match catalog vehicle for verified specs and multi-angle imagery
+    const matchedCatalog = INITIAL_VEHICLES.find(
+      (v) => v.make.toLowerCase() === make.trim().toLowerCase() && v.model.toLowerCase() === model.trim().toLowerCase()
+    );
+
+    const vehicleImage = !isCustom && matchedCatalog
+      ? matchedCatalog.image
+      : (PRESET_POPULAR_MODELS[selectedPresetIndex]?.img || '');
+
+    const vehicleImages = !isCustom && matchedCatalog?.images
+      ? matchedCatalog.images
+      : undefined;
+
+    // Honest specifications: verified catalog specs or "Not provided" (never fabricate)
+    const vehicleSpecs = !isCustom && matchedCatalog?.specs
+      ? matchedCatalog.specs
+      : {
+          power: 'Not provided',
+          torque: 'Not provided',
+          zeroToHundred: 'Not provided',
+          transmission: 'Not provided',
+          engine: 'Not provided',
+          fuelTankLiters: undefined,
+          warrantyYears: undefined,
+        };
+
     const newCar: Vehicle = {
       id: `car-${Date.now()}`,
-      make,
-      model,
-      variant,
+      make: make.trim(),
+      model: model.trim(),
+      variant: variant.trim(),
       year: Number(year),
       fuelType,
       purchasePrice: Number(purchasePrice),
@@ -75,16 +101,9 @@ export const AddCarModal: React.FC<AddCarModalProps> = ({ isOpen, onClose, onAdd
       firstYearDepreciationRate: 0.18,
       odometerKm: Number(odometerKm),
       purchaseDate,
-      image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80',
-      specs: {
-        engine: `${expectedMileage > 18 ? '2.5L Hybrid' : '2.0L Turbocharged'}`,
-        power: '250 hp approx',
-        torque: '380 Nm approx',
-        transmission: 'Automatic Transmission',
-        zeroToHundred: '6.5 sec',
-        fuelTankLiters: 55,
-        warrantyYears: 3,
-      },
+      image: vehicleImage,
+      images: vehicleImages,
+      specs: vehicleSpecs,
     };
 
     setStepSuccess(true);

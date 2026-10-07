@@ -24,6 +24,7 @@ import { KeepOrSellModal } from './components/KeepOrSellModal';
 import { AddCarModal } from './components/AddCarModal';
 import { MoreMenuView } from './components/MoreMenuView';
 import { DriverProfilesCard } from './components/DriverProfilesCard';
+import { LandingPage } from './components/LandingPage';
 import { ArrowLeft } from 'lucide-react';
 
 export default function App() {
@@ -32,7 +33,7 @@ export default function App() {
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
     try {
-      const saved = localStorage.getItem('carconomy_vehicles_v3');
+      const saved = localStorage.getItem('carconomy_vehicles_v4');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length >= INITIAL_VEHICLES.length) {
@@ -65,7 +66,7 @@ export default function App() {
 
   const [financialProfile, setFinancialProfile] = useState<FinancialProfile>(() => {
     try {
-      const saved = localStorage.getItem('carconomy_finance');
+      const saved = localStorage.getItem('carconomy_finance_v4');
       return saved ? JSON.parse(saved) : INITIAL_FINANCIAL_PROFILE;
     } catch {
       return INITIAL_FINANCIAL_PROFILE;
@@ -74,7 +75,7 @@ export default function App() {
 
   const [ownershipProfile, setOwnershipProfile] = useState<OwnershipProfile>(() => {
     try {
-      const saved = localStorage.getItem('carconomy_ownership');
+      const saved = localStorage.getItem('carconomy_ownership_v4');
       return saved ? JSON.parse(saved) : INITIAL_OWNERSHIP_PROFILE;
     } catch {
       return INITIAL_OWNERSHIP_PROFILE;
@@ -95,11 +96,11 @@ export default function App() {
   // Sync to local storage
   useEffect(() => {
     try {
-      localStorage.setItem('carconomy_vehicles_v3', JSON.stringify(vehicles));
-      localStorage.setItem('carconomy_active_vehicle_id', activeVehicleId);
-      localStorage.setItem('carconomy_drivers', JSON.stringify(drivers));
-      localStorage.setItem('carconomy_finance', JSON.stringify(financialProfile));
-      localStorage.setItem('carconomy_ownership', JSON.stringify(ownershipProfile));
+      localStorage.setItem('carconomy_vehicles_v4', JSON.stringify(vehicles));
+      localStorage.setItem('carconomy_active_vehicle_id_v4', activeVehicleId);
+      localStorage.setItem('carconomy_drivers_v4', JSON.stringify(drivers));
+      localStorage.setItem('carconomy_finance_v4', JSON.stringify(financialProfile));
+      localStorage.setItem('carconomy_ownership_v4', JSON.stringify(ownershipProfile));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
     }
@@ -135,7 +136,7 @@ export default function App() {
     setActiveTab('HOME');
   };
 
-  const isSubTab = ['SERVICES', 'CONSULTANCY', 'DRIVERS', 'COSTS', 'INSIGHTS', 'PROFILE'].includes(activeTab);
+  const isSubTab = ['SERVICES', 'CONSULTANCY', 'DRIVERS', 'COSTS', 'INSIGHTS', 'PROFILE', 'LANDING'].includes(activeTab);
 
   return (
     <div className="min-h-screen bg-[#08090C] text-[#F3F4F6] flex flex-col font-sans selection:bg-[#CCFF00] selection:text-black">
@@ -281,6 +282,20 @@ export default function App() {
             onUpdateFinance={setFinancialProfile}
             onUpdateOwnership={setOwnershipProfile}
             onResetDemo={handleResetDemo}
+          />
+        )}
+
+        {/* 6. LANDING PAGE OVERVIEW */}
+        {activeTab === 'LANDING' && (
+          <LandingPage
+            vehicles={vehicles}
+            drivers={drivers}
+            financialProfile={financialProfile}
+            ownershipProfile={ownershipProfile}
+            onOpenDashboard={() => setActiveTab('HOME')}
+            onOpenKeepSell={() => setIsKeepSellModalOpen(true)}
+            onOpenComparison={() => setActiveTab('COMPARE')}
+            onOpenConsultancy={() => setActiveTab('CONSULTANCY')}
           />
         )}
       </main>

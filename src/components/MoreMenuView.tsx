@@ -88,6 +88,14 @@ export const MoreMenuView: React.FC<MoreMenuViewProps> = ({
       color: 'text-zinc-400',
       action: () => onNavigateSubTab('PROFILE'),
     },
+    {
+      id: 'LANDING',
+      title: 'Product Tour & Pitch Landing',
+      subtitle: 'Pitch Ignite presentation & real engine overview',
+      icon: Sparkles,
+      color: 'text-[#CCFF00]',
+      action: () => onNavigateSubTab('LANDING'),
+    },
   ];
 
   return (

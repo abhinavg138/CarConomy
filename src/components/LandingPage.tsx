@@ -16,13 +16,19 @@ import {
   CheckCircle2,
   ChevronDown,
   Layers,
-  ChevronRight
+  ChevronRight,
+  MapPin
 } from 'lucide-react';
-import { Vehicle } from '../types';
+import { Vehicle, Driver, FinancialProfile, OwnershipProfile } from '../types';
 import { formatINR, formatCostPerKm } from '../utils/formatters';
+import { calculateTrueCost, calculateComparison } from '../utils/calculator';
+import { INITIAL_DRIVERS, INITIAL_FINANCIAL_PROFILE, INITIAL_OWNERSHIP_PROFILE } from '../data/mockData';
 
 interface LandingPageProps {
   vehicles: Vehicle[];
+  drivers?: Driver[];
+  financialProfile?: FinancialProfile;
+  ownershipProfile?: OwnershipProfile;
   onOpenDashboard: () => void;
   onOpenKeepSell: () => void;
   onOpenComparison: () => void;
@@ -31,27 +37,47 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   vehicles,
+  drivers = INITIAL_DRIVERS,
+  financialProfile = INITIAL_FINANCIAL_PROFILE,
+  ownershipProfile = INITIAL_OWNERSHIP_PROFILE,
   onOpenDashboard,
   onOpenKeepSell,
   onOpenComparison,
   onOpenConsultancy,
 }) => {
-  // Quick Calculator State
+  // Quick Interactive State
   const [selectedCarId, setSelectedCarId] = useState<string>(vehicles[0].id);
   const [quickDailyKm, setQuickDailyKm] = useState<number>(40);
+  const [selectedCity, setSelectedCity] = useState<string>(ownershipProfile.city || 'NCR / Delhi');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   const selectedCar = vehicles.find((v) => v.id === selectedCarId) || vehicles[0];
 
-  // Deterministic quick estimate for the hero widget
-  const annualKm = quickDailyKm * 365;
-  const annualFuel = Math.round((annualKm / selectedCar.expectedMileage) * 100);
-  const annualDep = Math.round(selectedCar.currentValue * selectedCar.depreciationRate);
-  const annualMaint = selectedCar.maintenanceEstimate;
-  const annualIns = selectedCar.insuranceEstimate;
-  const annualTotal = annualFuel + annualDep + annualMaint + annualIns;
-  const quickCostPerKm = (annualTotal / annualKm).toFixed(1);
-  const fiveYearEst = annualTotal * 5;
+  // Dynamic Ownership Profile driven by landing controls
+  const activeOwnership: OwnershipProfile = {
+    ...ownershipProfile,
+    annualKm: quickDailyKm * 365,
+    city: selectedCity,
+  };
+
+  // Authoritative Calculation Engine Outputs — Single Source of Truth
+  const heroEconomics = calculateTrueCost(
+    selectedCar,
+    drivers,
+    activeOwnership,
+    financialProfile,
+    'CURRENT_CAR'
+  );
+
+  // Comparison benchmark against an alternative vehicle
+  const comparisonAlternative = vehicles.find((v) => v.id !== selectedCar.id) || vehicles[1];
+  const comparisonResult = calculateComparison(
+    selectedCar,
+    comparisonAlternative,
+    drivers,
+    activeOwnership,
+    financialProfile
+  );
 
   const faqs = [
     {
@@ -60,7 +86,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
     {
       q: 'How does the "KEEP or SELL" algorithm work?',
-      a: 'Our engine evaluates your vehicle’s specific depreciation curve inflection point against upcoming scheduled maintenance cliffs. When residual value loss and scheduled maintenance exceed the cost of replacing the vehicle, our algorithm flags a SELL recommendation with exact rupee savings.',
+      a: 'Our engine evaluates your vehicle’s specific depreciation curve inflection point against upcoming scheduled maintenance cliffs. When holding costs (depreciation, scheduled maintenance, and financing) exceed the cost of replacing the vehicle, our algorithm flags a SELL recommendation with exact rupee savings.',
     },
     {
       q: 'Can Carconomy help me before buying a new or used car?',
@@ -111,7 +137,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
               <button
                 onClick={onOpenDashboard}
-                className="px-7 py-3.5 rounded-2xl bg-[#CCFF00] hover:bg-[#b8f000] text-black font-extrabold text-sm tracking-wide transition-all shadow-xl shadow-[#CCFF00]/25 flex items-center justify-center gap-2.5 group"
+                className="px-7 py-3.5 rounded-2xl bg-[#CCFF00] hover:bg-[#b8f000] text-black font-extrabold text-sm tracking-wide transition-all shadow-xl shadow-[#CCFF00]/25 flex items-center justify-center gap-2.5 group cursor-pointer"
               >
                 <span>Launch Live Dashboard</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -119,26 +145,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               <button
                 onClick={onOpenKeepSell}
-                className="px-6 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-colors flex items-center justify-center gap-2"
+                className="px-6 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4 text-[#CCFF00]" />
-                <span>Keep or Sell Algorithm</span>
+                <span>Keep or Sell: {heroEconomics.keepSellDecision}</span>
               </button>
             </div>
 
-            {/* Quick Stat Trust Badges */}
+            {/* Quick Stat Trust Badges (All Engine Derived) */}
             <div className="grid grid-cols-3 gap-3 pt-6 border-t border-white/10 max-w-lg">
               <div>
-                <span className="text-xl sm:text-2xl font-black text-white font-mono-numbers">₹18.4</span>
+                <span className="text-xl sm:text-2xl font-black text-white font-mono-numbers">
+                  ₹{heroEconomics.costPerKm.toFixed(1)}
+                </span>
                 <span className="text-[10px] text-zinc-400 block font-medium">True Cost / km Baseline</span>
               </div>
               <div>
-                <span className="text-xl sm:text-2xl font-black text-[#CCFF00] font-mono-numbers">₹3.3L</span>
-                <span className="text-[10px] text-zinc-400 block font-medium">Avg 5-Yr Savings Found</span>
+                <span className="text-xl sm:text-2xl font-black text-[#CCFF00] font-mono-numbers">
+                  {formatINR(comparisonResult.savings)}
+                </span>
+                <span className="text-[10px] text-zinc-400 block font-medium">5-Yr vs {comparisonAlternative.model}</span>
               </div>
               <div>
-                <span className="text-xl sm:text-2xl font-black text-white font-mono-numbers">0%</span>
-                <span className="text-[10px] text-zinc-400 block font-medium">ECU or GPS Telemetry</span>
+                <span className={`text-xl sm:text-2xl font-black font-mono-numbers ${
+                  heroEconomics.financialFitTier === 'COMFORTABLE' ? 'text-emerald-400' :
+                  heroEconomics.financialFitTier === 'STRETCHED' ? 'text-amber-400' : 'text-rose-400'
+                }`}>
+                  {heroEconomics.financialFitTier}
+                </span>
+                <span className="text-[10px] text-zinc-400 block font-medium">Fit ({heroEconomics.incomeAllocationPercent}% inc.)</span>
               </div>
             </div>
           </div>
@@ -153,25 +188,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     Instant Cost / km Estimator
                   </span>
                 </div>
-                <span className="text-[10px] text-zinc-400 font-mono-numbers">Live Engine</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#CCFF00]/15 text-[#CCFF00] font-mono-numbers font-bold">
+                  Live Engine
+                </span>
               </div>
 
-              {/* Car Selection */}
-              <div>
-                <label className="text-[11px] font-semibold text-zinc-400 block mb-1.5 uppercase">
-                  Select Vehicle Model
-                </label>
-                <select
-                  value={selectedCarId}
-                  onChange={(e) => setSelectedCarId(e.target.value)}
-                  className="w-full bg-[#1A202C] text-xs font-semibold text-white px-3.5 py-2.5 rounded-xl border border-white/10 focus:border-[#CCFF00] focus:outline-none"
-                >
-                  {vehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.make} {v.model} ({formatINR(v.purchasePrice)})
-                    </option>
-                  ))}
-                </select>
+              {/* Vehicle & City Selectors */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 block mb-1 uppercase tracking-wider">
+                    Vehicle Model
+                  </label>
+                  <select
+                    value={selectedCarId}
+                    onChange={(e) => setSelectedCarId(e.target.value)}
+                    className="w-full bg-[#1A202C] text-xs font-semibold text-white px-3 py-2 rounded-xl border border-white/10 focus:border-[#CCFF00] focus:outline-none"
+                  >
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.make} {v.model} ({formatINR(v.purchasePrice)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 block mb-1 uppercase tracking-wider">
+                    City / Traffic
+                  </label>
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="w-full bg-[#1A202C] text-xs font-semibold text-white px-3 py-2 rounded-xl border border-white/10 focus:border-[#CCFF00] focus:outline-none"
+                  >
+                    {['NCR / Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Pune', 'Tier-2 / Highway'].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Daily Distance Slider */}
@@ -191,42 +245,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 />
                 <div className="flex justify-between text-[10px] text-zinc-500 mt-1 font-mono-numbers">
                   <span>10 km/day</span>
-                  <span>{(quickDailyKm * 365).toLocaleString('en-IN')} km / year</span>
+                  <span>{heroEconomics.annualKm.toLocaleString('en-IN')} km / year</span>
                   <span>100 km/day</span>
                 </div>
               </div>
 
-              {/* Calculated Results Callout */}
+              {/* Calculated Results Callout from Calculation Engine */}
               <div className="p-4 rounded-2xl bg-black/50 border border-[#CCFF00]/25 space-y-3">
                 <div className="flex items-baseline justify-between">
                   <div>
                     <span className="text-[10px] text-zinc-400 uppercase tracking-widest block font-medium">
-                      Your True Cost
+                      True Cost Per Km
                     </span>
                     <span className="text-3xl font-black text-[#CCFF00] font-mono-numbers">
-                      ₹{quickCostPerKm}
+                      ₹{heroEconomics.costPerKm.toFixed(1)}
                     </span>
                     <span className="text-xs text-zinc-400 font-sans"> / km</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-zinc-400 uppercase tracking-widest block font-medium">
-                      Annual Burn
+                      Annual Total Burn
                     </span>
                     <span className="text-xl font-bold text-white font-mono-numbers">
-                      {formatINR(annualTotal)}
+                      {formatINR(heroEconomics.annualTotalCost)}
                     </span>
                   </div>
                 </div>
 
                 <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-zinc-400">
                   <span>5-Year Cumulative Outlay:</span>
-                  <span className="text-white font-bold font-mono-numbers">{formatINR(fiveYearEst)}</span>
+                  <span className="text-white font-bold font-mono-numbers">
+                    {formatINR(heroEconomics.fiveYearTotalCost)}
+                  </span>
                 </div>
               </div>
 
               <button
                 onClick={onOpenDashboard}
-                className="w-full py-3 rounded-xl bg-white/10 hover:bg-[#CCFF00] text-white hover:text-black font-extrabold text-xs transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-white/10 hover:bg-[#CCFF00] text-white hover:text-black font-extrabold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>View Full Household Breakdown</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -245,7 +301,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             The Financial Reality
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            The Invisible ₹6,00,000 Capital Leak
+            The Invisible {formatINR(heroEconomics.fiveYearDepreciationTotal)} Capital Leak
           </h2>
           <p className="text-sm text-zinc-400 leading-relaxed">
             Most owners budget only for fuel and monthly loan payments. Here is what actually consumes
@@ -267,26 +323,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               <div className="space-y-2.5">
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5 flex justify-between items-center text-xs">
-                  <span className="text-zinc-300">Down Payment & Sticker Price</span>
-                  <span className="text-white font-bold font-mono-numbers">₹15,00,000</span>
+                  <span className="text-zinc-300">Down Payment & Upfront Capital</span>
+                  <span className="text-white font-bold font-mono-numbers">
+                    {formatINR(heroEconomics.loan.principal > 0 ? (selectedCar.purchasePrice - heroEconomics.loan.principal) : selectedCar.purchasePrice)}
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5 flex justify-between items-center text-xs">
                   <span className="text-zinc-300">Basic Monthly Petrol</span>
-                  <span className="text-white font-bold font-mono-numbers">₹8,000 / mo</span>
+                  <span className="text-white font-bold font-mono-numbers">
+                    {formatINR(heroEconomics.monthlyFuelCost)} / mo
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5 flex justify-between items-center text-xs">
                   <span className="text-zinc-300">Annual Standard Service</span>
-                  <span className="text-white font-bold font-mono-numbers">₹15,000 / yr</span>
+                  <span className="text-white font-bold font-mono-numbers">
+                    {formatINR(selectedCar.maintenanceEstimate)} / yr
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/5 text-xs text-rose-300/90 font-medium">
-              &times; Ignores ₹4.6L annual depreciation, ₹18K driver wear, and insurance spikes.
+              &times; Ignores {formatINR(heroEconomics.annualDepreciation)} annual depreciation, {formatINR(heroEconomics.householdAdditionalWear)} driver wear, and insurance spikes.
             </div>
           </div>
 
-          {/* Card B: What Carconomy reveals */}
+          {/* Card B: What Carconomy reveals (Direct from Engine) */}
           <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-b from-[#18202C] to-[#10141C] border border-[#CCFF00]/30 shadow-xl shadow-[#CCFF00]/5 flex flex-col justify-between">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#CCFF00] block mb-2">
@@ -300,22 +362,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="space-y-2.5">
                 <div className="p-3 rounded-xl bg-black/40 border border-white/5 flex justify-between items-center text-xs">
                   <span className="text-zinc-300">Annual Depreciation Loss (Unseen)</span>
-                  <span className="text-rose-400 font-bold font-mono-numbers">-₹2,80,000 / yr</span>
+                  <span className="text-rose-400 font-bold font-mono-numbers">
+                    -{formatINR(heroEconomics.annualDepreciation)} / yr
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-black/40 border border-white/5 flex justify-between items-center text-xs">
                   <span className="text-zinc-300">Household Driving & Wear Multiplier</span>
-                  <span className="text-[#CCFF00] font-bold font-mono-numbers">+₹18,700 / yr</span>
+                  <span className="text-[#CCFF00] font-bold font-mono-numbers">
+                    +{formatINR(heroEconomics.householdAdditionalWear)} / yr
+                  </span>
                 </div>
                 <div className="p-3 rounded-xl bg-black/40 border border-white/5 flex justify-between items-center text-xs">
                   <span className="text-zinc-300">Scheduled Service, Tyres & Zero-Dep Insurance</span>
-                  <span className="text-white font-bold font-mono-numbers">₹83,000 / yr</span>
+                  <span className="text-white font-bold font-mono-numbers">
+                    {formatINR(heroEconomics.annualMaintenance + heroEconomics.annualInsurance + heroEconomics.annualTyres)} / yr
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
               <span className="text-zinc-300 font-medium">True Amortized Reality:</span>
-              <span className="text-lg font-black text-[#CCFF00] font-mono-numbers">₹18.4 / km</span>
+              <span className="text-lg font-black text-[#CCFF00] font-mono-numbers">
+                ₹{heroEconomics.costPerKm.toFixed(1)} / km
+              </span>
             </div>
           </div>
         </div>
@@ -382,7 +452,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <h4 className="text-lg font-bold text-white tracking-tight">Financial Affordability Fit</h4>
             <p className="text-xs text-zinc-400 leading-relaxed">
               Evaluates monthly car commitment against household income. Classifies financial burden as
-              Comfortable (&lt;22%), Stretched (22-33%), or Aggressive (&gt;33%).
+              Comfortable (&lt;24%), Stretched (24-36%), or Aggressive (&gt;36%).
             </p>
           </div>
 
@@ -403,10 +473,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="w-10 h-10 rounded-xl bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold">
               <Car className="w-5 h-5" />
             </div>
-            <h4 className="text-lg font-bold text-white tracking-tight">3D Luxury Garage Studio</h4>
+            <h4 className="text-lg font-bold text-white tracking-tight">Real Vehicle Visual Identity</h4>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Interactive 360° Three.js vehicle configurator with studio turntable lighting, paint
-              swatches, LED headlights, and aerodynamic inspection.
+              Verified multi-angle manufacturer imagery mapping showing exact generation, variant, and color
+              without cheap procedural approximations.
             </p>
           </div>
         </div>
@@ -431,7 +501,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         <button
           onClick={onOpenConsultancy}
-          className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-[#CCFF00] text-white hover:text-black font-extrabold text-xs transition-colors flex items-center gap-2 shrink-0"
+          className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-[#CCFF00] text-white hover:text-black font-extrabold text-xs transition-colors flex items-center gap-2 shrink-0 cursor-pointer"
         >
           <PhoneCall className="w-4 h-4" />
           <span>Book ₹999 Advisory Session</span>
@@ -461,7 +531,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 <button
                   onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-bold text-sm text-white"
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-bold text-sm text-white cursor-pointer"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
@@ -500,7 +570,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
           <button
             onClick={onOpenDashboard}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#CCFF00] hover:bg-[#b8f000] text-black font-extrabold text-sm transition-all shadow-xl shadow-[#CCFF00]/25 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#CCFF00] hover:bg-[#b8f000] text-black font-extrabold text-sm transition-all shadow-xl shadow-[#CCFF00]/25 flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Open Carconomy Live Dashboard</span>
             <ArrowRight className="w-4 h-4" />
@@ -508,7 +578,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <button
             onClick={onOpenComparison}
-            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-colors"
+            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-colors cursor-pointer"
           >
             Compare 2 Cars Now
           </button>

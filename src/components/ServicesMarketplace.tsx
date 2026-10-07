@@ -138,17 +138,27 @@ export const ServicesMarketplace: React.FC<ServicesMarketplaceProps> = ({
             </div>
 
             {bookedSuccess ? (
-              <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-center text-xs font-bold text-emerald-400 flex items-center justify-center gap-1.5">
-                <Check className="w-4 h-4" />
-                <span>Service Scheduled for {activeVehicle.model}</span>
+              <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-center text-xs font-bold text-emerald-400 space-y-1">
+                <div className="flex items-center justify-center gap-1.5">
+                  <Check className="w-4 h-4" />
+                  <span>Lead Captured (Prototype Simulation)</span>
+                </div>
+                <p className="text-[10px] text-zinc-400 font-normal">
+                  In production, this request dispatches to verified {bookingItem.providerName} partners.
+                </p>
               </div>
             ) : (
-              <button
-                onClick={handleConfirm}
-                className="w-full py-3.5 rounded-2xl bg-[#CCFF00] text-black font-black text-xs uppercase tracking-wider cursor-pointer"
-              >
-                Schedule Service
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handleConfirm}
+                  className="w-full py-3.5 rounded-2xl bg-[#CCFF00] text-black font-black text-xs uppercase tracking-wider cursor-pointer hover:bg-[#b8e600] transition-colors"
+                >
+                  Request Service Quote
+                </button>
+                <span className="text-[10px] text-zinc-500 block text-center">
+                  Prototype Marketplace Demo • No live booking API connected
+                </span>
+              </div>
             )}
           </div>
         </div>

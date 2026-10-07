@@ -193,6 +193,71 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 4. METHODOLOGY & DATA SOURCE TRANSPARENCY */}
+      <div className="p-6 rounded-3xl bg-[#0F131A] border border-white/10 space-y-4">
+        <div>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#CCFF00] block">
+            FINANCIAL FIDUCIARY STANDARDS
+          </span>
+          <h3 className="text-base font-bold text-white tracking-tight mt-0.5">
+            Methodology & Source Data Transparency
+          </h3>
+          <p className="text-xs text-zinc-400 mt-1">
+            Every figure in Carconomy is engine-derived from explicit formulas. No marketing estimates or arbitrary multipliers.
+          </p>
+        </div>
+
+        <div className="space-y-2.5 text-xs">
+          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white">Fuel Consumption Model</span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-300 text-[10px] font-semibold">
+                ARAI + Driving Style Degradation
+              </span>
+            </div>
+            <p className="text-zinc-400 text-[11px] leading-relaxed">
+              Base efficiency indexed to factory ARAI standards. Degraded dynamically by household driving style (-0% Efficient, -12% Moderate, -25% Aggressive) and urban split.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white">Depreciation & Residual Value</span>
+              <span className="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 text-[10px] font-semibold">
+                Secondary Market Actuarial Curve
+              </span>
+            </div>
+            <p className="text-zinc-400 text-[11px] leading-relaxed">
+              New car purchase models an initial 18% Year 1 drive-off step down, compounded by brand-specific secondary retention rates (Toyota 8%, Hyundai 8.5%, Luxury Euro 11.5%).
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white">Keep or Sell Verdict Algorithm</span>
+              <span className="px-2 py-0.5 rounded-md bg-[#CCFF00]/15 text-[#CCFF00] text-[10px] font-semibold">
+                12-Month Like-for-Like Simulation
+              </span>
+            </div>
+            <p className="text-zinc-400 text-[11px] leading-relaxed">
+              Simulates exact 12-month capital requirements: (Current Car 12M Depr + Maintenance + Loan Interest) vs (Replacement Car 12M Friction + Year 1 Depr + New Loan Interest). Strict invariant: if Keep Cost &le; Sell Cost &rarr; KEEP, else SELL.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white">Insurance & Financing</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">
+                IDV Zero-Dep + Reducing EMI
+              </span>
+            </div>
+            <p className="text-zinc-400 text-[11px] leading-relaxed">
+              Insurance amortized on Insured Declared Value (IDV) with 5% annual NCB reduction. Loans use mathematical reducing balance formula [P &times; r &times; (1+r)^n / ((1+r)^n - 1)].
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

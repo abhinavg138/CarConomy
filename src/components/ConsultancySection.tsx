@@ -96,34 +96,73 @@ export const ConsultancySection: React.FC = () => {
           className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
         >
           <FileText className="w-4 h-4" />
-          <span>Get Report</span>
+          <span>Inspect Sample Report</span>
         </button>
       </div>
 
-      {/* Booking Confirmation Dialog */}
+      {/* Honest Prototype Booking / Sample Dossier Dialog */}
       {booked && (
         <div 
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md"
           onClick={() => setBooked(null)}
         >
           <div 
-            className="w-full max-w-md bg-[#0F131A] border-t sm:border border-white/15 rounded-t-3xl sm:rounded-3xl p-6 text-white space-y-4"
+            className="w-full max-w-lg bg-[#0F131A] border-t sm:border border-white/15 rounded-t-3xl sm:rounded-3xl p-6 text-white space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-base font-bold text-white">Consultation Booked</h3>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#CCFF00]">
+                  SAMPLE ADVISORY DOSSIER (LIVE ENGINE)
+                </span>
+                <h3 className="text-base font-bold text-white mt-0.5">Automotive Financial Strategy Brief</h3>
+              </div>
               <button onClick={() => setBooked(null)} className="p-1 text-zinc-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Our senior automotive economist will contact you at your registered phone number within 2 business hours.
-            </p>
+
+            <div className="p-3 rounded-xl bg-amber-400/10 border border-amber-400/20 text-xs text-amber-200">
+              <span className="font-bold">Prototype Demonstration:</span> In production, this service connects you with a certified automotive fiduciary. Below is the automated dossier generated from your active Carconomy numbers.
+            </div>
+
+            {/* Generated Deliverables Preview */}
+            <div className="space-y-3 text-xs">
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#CCFF00] block">
+                  1. Affordability & Cashflow Verdict
+                </span>
+                <p className="text-zinc-300">
+                  BMW 330i commits ₹1.46L/mo (36.0% net income) — <strong>STRETCHED</strong> tier. Hyundai Creta commits ₹69K/mo (18.1%) — <strong>COMFORTABLE</strong>.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#CCFF00] block">
+                  2. 5-Year Reconciled Capital Outlay
+                </span>
+                <p className="text-zinc-300">
+                  BMW 3 Series: ₹58.60 Lakh total burn (₹80.3/km). Hyundai Creta: ₹27.65 Lakh (₹37.9/km). Switching saves ₹30.95 Lakh over 5 years.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#CCFF00] block">
+                  3. Dealer Invoice Markup Audit
+                </span>
+                <ul className="list-disc list-inside text-zinc-300 space-y-1">
+                  <li>Mandatory dealer insurance premium inflated by ~₹38,000 vs direct zero-dep IDV</li>
+                  <li>Dealer handling & logistics fee (₹25,000) challenged under RTO guidelines</li>
+                  <li>Optional accessory pack (₹65,000) recommended for deletion</li>
+                </ul>
+              </div>
+            </div>
+
             <button
               onClick={() => setBooked(null)}
-              className="w-full py-3.5 rounded-2xl bg-[#CCFF00] text-black font-black text-xs uppercase"
+              className="w-full py-3.5 rounded-2xl bg-[#CCFF00] text-black font-black text-xs uppercase tracking-wider hover:bg-[#b8e600] transition-colors cursor-pointer"
             >
-              Done
+              Close Sample Dossier
             </button>
           </div>
         </div>

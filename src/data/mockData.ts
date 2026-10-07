@@ -422,10 +422,10 @@ export const INITIAL_DRIVERS: Driver[] = [
 ];
 
 export const INITIAL_FINANCIAL_PROFILE: FinancialProfile = {
-  monthlyIncome: 350000,     // ₹3.5L / month
-  householdIncome: 350000,   // ₹3.5L / month
-  existingEmis: 55000,       // ₹55K / month
-  otherCommitments: 18000,   // ₹18K
+  monthlyIncome: 420000,     // ₹4.2L / month (executive / business owner)
+  householdIncome: 420000,   // ₹4.2L / month
+  existingEmis: 25000,       // ₹25K / month
+  otherCommitments: 10000,   // ₹10K / month
   downPayment: 1500000,      // ₹15L
   loanAmount: 4000000,       // ₹40L
   interestRate: 8.85,        // 8.85% p.a.

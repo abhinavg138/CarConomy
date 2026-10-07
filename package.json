@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx -e \"import { runEngineTests } from './src/utils/calculator.test'; const res = runEngineTests(); console.log(res); if (!res.success) process.exit(1);\""
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

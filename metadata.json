@@ -1,0 +1,6 @@
+{
+  "name": "CARCONOMY - Automotive Financial Intelligence",
+  "description": "Know what your car really costs. True cost per kilometre, depreciation tracking, financial fit, keep-or-sell decisions, and automotive intelligence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

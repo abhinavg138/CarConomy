@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Space Grotesk', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #08090C;
+    color: #F3F4F6;
+  }
+}
+
+.font-mono-numbers {
+  font-family: 'Space Grotesk', monospace;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #08090C;
+}
+::-webkit-scrollbar-thumb {
+  background: #1F242C;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2D3748;
+}
+
+/* Automotive subtle glows */
+.accent-glow {
+  box-shadow: 0 0 25px -5px rgba(204, 255, 0, 0.25);
+}
+
+.accent-glow-sm {
+  box-shadow: 0 0 15px -3px rgba(204, 255, 0, 0.2);
+}
+
+.subtle-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hover-subtle-border:hover {
+  border-color: rgba(204, 255, 0, 0.25);
+}
+
+/* Glass & Card depth */
+.car-card {
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.8) 0%, rgba(13, 16, 21, 0.95) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.car-card-highlight {
+  background: linear-gradient(180deg, rgba(28, 35, 45, 0.9) 0%, rgba(15, 19, 26, 0.98) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(204, 255, 0, 0.2);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

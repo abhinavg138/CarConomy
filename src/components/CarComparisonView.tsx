@@ -4,6 +4,8 @@ import { Vehicle, Driver, FinancialProfile, OwnershipProfile } from '../types';
 import { calculateComparison } from '../utils/calculator';
 import { formatINR } from '../utils/formatters';
 
+import { CumulativeComparisonChart } from './charts/FinancialCharts';
+
 interface CarComparisonViewProps {
   vehicles: Vehicle[];
   drivers: Driver[];
@@ -64,6 +66,30 @@ export const CarComparisonView: React.FC<CarComparisonViewProps> = ({
       isBetterA: ecoA.fiveYearValueRemaining > ecoB.fiveYearValueRemaining,
     },
     {
+      label: 'HOUSEHOLD DRIVER WEAR IMPACT',
+      valA: `+${formatINR(ecoA.householdAdditionalWear)}/yr`,
+      valB: `+${formatINR(ecoB.householdAdditionalWear)}/yr`,
+      numA: ecoA.householdAdditionalWear,
+      numB: ecoB.householdAdditionalWear,
+      isBetterA: ecoA.householdAdditionalWear <= ecoB.householdAdditionalWear,
+    },
+    {
+      label: 'EFFECTIVE REAL-WORLD MILEAGE',
+      valA: `${ecoA.effectiveMileage} km/L`,
+      valB: `${ecoB.effectiveMileage} km/L`,
+      numA: ecoA.effectiveMileage,
+      numB: ecoB.effectiveMileage,
+      isBetterA: ecoA.effectiveMileage > ecoB.effectiveMileage,
+    },
+    {
+      label: 'FINANCIAL AFFORDABILITY FIT',
+      valA: `${ecoA.financialFitTier} (${ecoA.incomeAllocationPercent}%)`,
+      valB: `${ecoB.financialFitTier} (${ecoB.incomeAllocationPercent}%)`,
+      numA: ecoA.incomeAllocationPercent,
+      numB: ecoB.incomeAllocationPercent,
+      isBetterA: ecoA.incomeAllocationPercent < ecoB.incomeAllocationPercent,
+    },
+    {
       label: 'ANNUAL FUEL BURN',
       valA: formatINR(ecoA.annualFuelCost),
       valB: formatINR(ecoB.annualFuelCost),
@@ -72,12 +98,12 @@ export const CarComparisonView: React.FC<CarComparisonViewProps> = ({
       isBetterA: ecoA.annualFuelCost < ecoB.annualFuelCost,
     },
     {
-      label: 'ANNUAL MAINTENANCE',
-      valA: formatINR(ecoA.annualMaintenance),
-      valB: formatINR(ecoB.annualMaintenance),
-      numA: ecoA.annualMaintenance,
-      numB: ecoB.annualMaintenance,
-      isBetterA: ecoA.annualMaintenance < ecoB.annualMaintenance,
+      label: 'ANNUAL MAINTENANCE & TYRES',
+      valA: formatINR(ecoA.annualMaintenance + ecoA.annualTyres),
+      valB: formatINR(ecoB.annualMaintenance + ecoB.annualTyres),
+      numA: ecoA.annualMaintenance + ecoA.annualTyres,
+      numB: ecoB.annualMaintenance + ecoB.annualTyres,
+      isBetterA: (ecoA.annualMaintenance + ecoA.annualTyres) < (ecoB.annualMaintenance + ecoB.annualTyres),
     },
   ];
 
@@ -141,6 +167,15 @@ export const CarComparisonView: React.FC<CarComparisonViewProps> = ({
           {formatINR(savings)} cheaper over 5 years
         </p>
       </div>
+
+      {/* CUMULATIVE 5-YEAR CHART */}
+      <CumulativeComparisonChart
+        carAName={carA.model}
+        carBName={carB.model}
+        tcoA={ecoA.yearlyCumulativeTCO}
+        tcoB={ecoB.yearlyCumulativeTCO}
+        winnerIsA={winnerIsA}
+      />
 
       {/* 4. VERTICAL COMPARISON CARDS */}
       <div className="space-y-2.5">

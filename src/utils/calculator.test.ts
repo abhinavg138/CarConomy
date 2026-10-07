@@ -128,12 +128,25 @@ export function runEngineTests(): { success: boolean; results: string[] } {
   const bmwEco = calculateTrueCost(bmw, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
   const cretaEco = calculateTrueCost(creta, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
 
+  // 10. Demo Profile Narrative Test: BMW Stretched, Creta Comfortable
   const demoNarrativePass = bmwEco.financialFitTier === 'STRETCHED' && cretaEco.financialFitTier === 'COMFORTABLE';
   results.push(`Test 10 (Demo Profile Narrative): BMW 3 Series is ${bmwEco.financialFitTier} (${bmwEco.incomeAllocationPercent}%), Creta is ${cretaEco.financialFitTier} (${cretaEco.incomeAllocationPercent}%) [${demoNarrativePass ? 'PASS' : 'FAIL'}]`);
 
+  // 11. Financial Reconciliation Test: Component totals must sum up to headline 5-year total to the rupee
+  const componentSum = bmwEco.fiveYearFuelTotal + 
+                       bmwEco.fiveYearMaintenanceTotal + 
+                       bmwEco.fiveYearInsuranceTotal + 
+                       bmwEco.fiveYearDepreciationTotal + 
+                       bmwEco.fiveYearInterestTotal + 
+                       bmwEco.fiveYearRepairsTyresTotal + 
+                       bmwEco.fiveYearParkingTollsTotal;
+  const reconciliationPass = componentSum === bmwEco.fiveYearTotalCost && 
+                             bmwEco.yearlyCumulativeTCO[4] === bmwEco.fiveYearTotalCost;
+  results.push(`Test 11 (Financial Reconciliation): Components ₹${componentSum.toLocaleString()} === Headline ₹${bmwEco.fiveYearTotalCost.toLocaleString()} [${reconciliationPass ? 'PASS' : 'FAIL'}]`);
+
   const allPassed = emiCorrect && cretaPrincipalCorrect && fuelCorrect && depModeCorrect && 
                     driverWearCorrect && keepCheaperPass && sellCheaperPass && invariantPass && 
-                    financedPass && paidPass && demoNarrativePass;
+                    financedPass && paidPass && demoNarrativePass && reconciliationPass;
 
   return {
     success: allPassed,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ShieldCheck, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Vehicle, CalculatedEconomics } from '../types';
 import { formatINR } from '../utils/formatters';
+import { ValuationCurveChart } from './charts/FinancialCharts';
 
 interface KeepOrSellModalProps {
   isOpen: boolean;
@@ -142,6 +143,17 @@ export const KeepOrSellModal: React.FC<KeepOrSellModalProps> = ({
               {details.headlineReason}
             </p>
           </div>
+
+          {/* VALUATION CURVE CHART */}
+          {economics.yearlyData && economics.yearlyData.length >= 5 && (
+            <ValuationCurveChart
+              vehicleName={`${vehicle.make} ${vehicle.model}`}
+              startValue={details.sellTodayValue}
+              yearlyValues={economics.yearlyData.map((d) => d.vehicleValueAtYearEnd)}
+              breakEvenHorizon={details.breakEvenHorizon}
+              decision={details.decision}
+            />
+          )}
 
           {/* 4. PRIMARY CTA: SEE THE NUMBERS */}
           <button

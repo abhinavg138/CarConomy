@@ -135,6 +135,20 @@ export interface LoanAmortization {
   remainingPrincipalAtExit: number;
 }
 
+export interface YearlyFinancialBreakdown {
+  year: number;
+  fuel: number;
+  maintenance: number;
+  insurance: number;
+  depreciation: number;
+  financingInterest: number;
+  repairsAndTyres: number;
+  parkingAndTolls: number;
+  yearTotal: number;
+  cumulativeTCO: number;
+  vehicleValueAtYearEnd: number;
+}
+
 export interface CalculatedEconomics {
   // Annual figures (Year 1)
   annualKm: number;
@@ -167,7 +181,10 @@ export interface CalculatedEconomics {
   tenureResaleValue: number;
   tenureCostPerKm: number;
 
-  // 5 Year Projections
+  // Reconciled multi-year data
+  yearlyData: YearlyFinancialBreakdown[];
+
+  // 5 Year Projections (strictly reconciled: sum of yearlyData 1..5)
   fiveYearTotalCost: number;
   fiveYearValueRemaining: number;
   fiveYearCostPerKm: number;
@@ -176,6 +193,8 @@ export interface CalculatedEconomics {
   fiveYearMaintenanceTotal: number;
   fiveYearInsuranceTotal: number;
   fiveYearInterestTotal: number;
+  fiveYearRepairsTyresTotal: number;
+  fiveYearParkingTollsTotal: number;
   yearlyCumulativeTCO: number[]; // [yr1, yr2, yr3, yr4, yr5]
 
   // Keep or Sell analysis

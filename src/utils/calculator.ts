@@ -619,9 +619,13 @@ export function calculateTrueCost(
   const annualTyres = ownership.tyresAnnual || Math.round(annualKm * 0.95);
 
   // 8. Annual Financed Interest (Year 1)
-  const annualFinancingInterest = loan.interestPaidDuringOwnership > 0
-    ? Math.round(loan.interestPaidDuringOwnership / Math.min(ownership.ownershipYears, Math.max(1, finance.loanTenureYears)))
-    : 0;
+  const y1InterestInfo = calculateNext12MonthsLoanInterest(
+    loan.principal,
+    finance.interestRate,
+    finance.loanTenureYears,
+    0
+  );
+  const annualFinancingInterest = y1InterestInfo.interestNext12M;
 
   // 9. Total Annual Ownership Cost (Year 1)
   const annualTotalCost = 
@@ -637,30 +641,69 @@ export function calculateTrueCost(
   const costPerKm = Number((annualTotalCost / Math.max(1, annualKm)).toFixed(1));
   const monthlyOwnershipCost = Math.round(annualTotalCost / 12);
 
-  // 10. Multi-year Cumulative Total Cost of Ownership (5-Year TCO)
+  // 10. Multi-year Coherent Financial Engine (Years 1 to 5 strictly reconciled)
+  const yearlyData: YearlyFinancialBreakdown[] = [];
   const yearlyCumulativeTCO: number[] = [];
-  let cumTCO = 0;
+  let runningCumulative = 0;
+
   for (let yr = 1; yr <= 5; yr++) {
     const inflation = Math.pow(1.04, yr - 1);
-    const yrFuel = annualFuelCost * inflation;
-    const yrMaint = annualMaintenance * (1 + (yr - 1) * 0.08) * inflation;
-    const yrIns = annualInsurance * (1 - (yr - 1) * 0.05) * inflation;
-    const yrDep = dep.yearlyDepreciations[yr - 1] || annualDepreciation * 0.8;
-    const yrInterest = yr <= finance.loanTenureYears ? annualFinancingInterest : 0;
-    const yrTotal = yrFuel + yrMaint + yrIns + yrDep + yrInterest + annualRepairs + annualTyres;
-    cumTCO += yrTotal;
-    yearlyCumulativeTCO.push(Math.round(cumTCO));
+    const yrFuel = Math.round(annualFuelCost * inflation);
+    const yrMaint = Math.round(annualMaintenance * (1 + (yr - 1) * 0.08) * Math.pow(1.02, yr - 1));
+    const yrIns = Math.round(annualInsurance * Math.pow(0.92, yr - 1));
+    const yrDep = dep.yearlyDepreciations[yr - 1] || Math.round(annualDepreciation * Math.pow(0.85, yr - 1));
+    
+    // Exact financing interest for year yr
+    const yrLoanInfo = calculateNext12MonthsLoanInterest(
+      loan.principal,
+      finance.interestRate,
+      finance.loanTenureYears,
+      (yr - 1) * 12
+    );
+    const yrInterest = yrLoanInfo.interestNext12M;
+    
+    const yrRepairsTyres = Math.round((annualRepairs + annualTyres) * inflation);
+    const yrParkingTolls = Math.round((ownership.parkingTollsAnnual || 0) * inflation);
+    
+    const yearTotal = yrFuel + yrMaint + yrIns + yrDep + yrInterest + yrRepairsTyres + yrParkingTolls;
+    runningCumulative += yearTotal;
+    
+    yearlyCumulativeTCO.push(runningCumulative);
+    yearlyData.push({
+      year: yr,
+      fuel: yrFuel,
+      maintenance: yrMaint,
+      insurance: yrIns,
+      depreciation: yrDep,
+      financingInterest: yrInterest,
+      repairsAndTyres: yrRepairsTyres,
+      parkingAndTolls: yrParkingTolls,
+      yearTotal,
+      cumulativeTCO: runningCumulative,
+      vehicleValueAtYearEnd: dep.yearlyValues[yr - 1] || Math.round(vehicle.purchasePrice * 0.3),
+    });
   }
 
-  const fiveYearTotalCost = yearlyCumulativeTCO[4];
+  // Strictly reconciled 5-Year Totals directly summing yearlyData[0..4]
+  const fiveYearTotalCost = yearlyData.reduce((acc, d) => acc + d.yearTotal, 0);
+  const fiveYearFuelTotal = yearlyData.reduce((acc, d) => acc + d.fuel, 0);
+  const fiveYearMaintenanceTotal = yearlyData.reduce((acc, d) => acc + d.maintenance, 0);
+  const fiveYearInsuranceTotal = yearlyData.reduce((acc, d) => acc + d.insurance, 0);
+  const fiveYearDepreciationTotal = yearlyData.reduce((acc, d) => acc + d.depreciation, 0);
+  const fiveYearInterestTotal = yearlyData.reduce((acc, d) => acc + d.financingInterest, 0);
+  const fiveYearRepairsTyresTotal = yearlyData.reduce((acc, d) => acc + d.repairsAndTyres, 0);
+  const fiveYearParkingTollsTotal = yearlyData.reduce((acc, d) => acc + d.parkingAndTolls, 0);
+
   const fiveYearValueRemaining = dep.fiveYearValueRemaining;
   const fiveYearTotalKm = annualKm * 5;
   const fiveYearCostPerKm = Number((fiveYearTotalCost / Math.max(1, fiveYearTotalKm)).toFixed(1));
 
-  // 11. Ownership Tenure Cost (based on ownershipYears slider)
-  const tenureIdx = Math.min(4, Math.max(0, Math.round(ownership.ownershipYears) - 1));
-  const totalTenureCost = yearlyCumulativeTCO[tenureIdx] || Math.round(annualTotalCost * ownership.ownershipYears);
-  const tenureKm = annualKm * ownership.ownershipYears;
+  // 11. Ownership Tenure Cost (Honestly bounded to 1 to 5 years)
+  const tenureYearsBounded = Math.max(1, Math.min(5, Math.round(ownership.ownershipYears)));
+  const totalTenureCost = yearlyData.slice(0, tenureYearsBounded).reduce((acc, d) => acc + d.yearTotal, 0);
+  const tenureResaleValue = yearlyData[tenureYearsBounded - 1].vehicleValueAtYearEnd;
+  const totalTenureDepreciation = yearlyData.slice(0, tenureYearsBounded).reduce((acc, d) => acc + d.depreciation, 0);
+  const tenureKm = annualKm * tenureYearsBounded;
   const tenureCostPerKm = Number((totalTenureCost / Math.max(1, tenureKm)).toFixed(1));
 
   // 12. Keep or Sell Analysis
@@ -707,20 +750,24 @@ export function calculateTrueCost(
 
     loan,
 
-    tenureYears: ownership.ownershipYears,
+    tenureYears: tenureYearsBounded,
     totalTenureCost,
-    totalTenureDepreciation: dep.tenureDepreciationTotal,
-    tenureResaleValue: dep.tenureResaleValue,
+    totalTenureDepreciation,
+    tenureResaleValue,
     tenureCostPerKm,
+
+    yearlyData,
 
     fiveYearTotalCost,
     fiveYearValueRemaining,
     fiveYearCostPerKm,
-    fiveYearDepreciationTotal: dep.fiveYearDepreciationTotal,
-    fiveYearFuelTotal: Math.round(annualFuelCost * 5 * 1.08),
-    fiveYearMaintenanceTotal: Math.round(annualMaintenance * 5 * 1.15),
-    fiveYearInsuranceTotal: Math.round(annualInsurance * 5 * 0.9),
-    fiveYearInterestTotal: loan.interestPaidDuringOwnership,
+    fiveYearDepreciationTotal,
+    fiveYearFuelTotal,
+    fiveYearMaintenanceTotal,
+    fiveYearInsuranceTotal,
+    fiveYearInterestTotal,
+    fiveYearRepairsTyresTotal,
+    fiveYearParkingTollsTotal,
     yearlyCumulativeTCO,
 
     nextYearValue: keepSellDetails.expectedValueAfterOneYear,

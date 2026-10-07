@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Fuel, Wrench, Shield, TrendingDown, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { Vehicle, Driver, FinancialProfile, OwnershipProfile, CalculatedEconomics } from '../types';
 import { formatINR } from '../utils/formatters';
+import { YearlyCostBreakdownChart } from './charts/FinancialCharts';
 
 interface CostsViewProps {
   vehicle: Vehicle;
@@ -124,6 +125,11 @@ export const CostsView: React.FC<CostsViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* 5-YEAR YEARLY ARCHITECTURE CHART */}
+      {economics.yearlyData && economics.yearlyData.length > 0 && (
+        <YearlyCostBreakdownChart yearlyData={economics.yearlyData} />
+      )}
 
       {/* 3. ITEM LIST (TAP TO EXPAND) */}
       <div className="space-y-2">

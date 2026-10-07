@@ -27,6 +27,7 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
   onSelectCarToOwn,
   initialFinance,
   initialOwnership,
+  initialDrivers = [],
   onNavigateCompare,
 }) => {
   const [selectedCarId, setSelectedCarId] = useState<string>(vehicles[0]?.id || 'bmw-3-series');
@@ -68,22 +69,36 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
     expectedMileage: activeExpectedMileage,
   }), [selectedCar, activeExpectedMileage]);
 
-  const simulatedDrivers: Driver[] = useMemo(() => [
-    {
-      id: 'buy-driver-1',
-      name: 'Primary Driver',
-      role: 'Me',
-      dailyKm,
-      cityHighwaySplit: 70,
-      drivingStyle: 'MODERATE',
-    },
-  ], [dailyKm]);
+  // Propagate REAL household drivers (never substitute with single fake MODERATE driver)
+  const totalBaseDailyKm = useMemo(() => {
+    return initialDrivers.reduce((sum, d) => sum + d.dailyKm, 0) || 40;
+  }, [initialDrivers]);
+
+  const simulatedDrivers: Driver[] = useMemo(() => {
+    if (!initialDrivers || initialDrivers.length === 0) {
+      return [
+        {
+          id: 'buy-driver-1',
+          name: 'Primary Driver',
+          role: 'Me',
+          dailyKm,
+          cityHighwaySplit: 70,
+          drivingStyle: 'MODERATE' as const,
+        },
+      ];
+    }
+    const scale = dailyKm / totalBaseDailyKm;
+    return initialDrivers.map((d) => ({
+      ...d,
+      dailyKm: Math.max(1, Math.round(d.dailyKm * scale)),
+    }));
+  }, [initialDrivers, dailyKm, totalBaseDailyKm]);
 
   const simulatedOwnership: OwnershipProfile = useMemo(() => ({
     ...initialOwnership,
     annualKm: dailyKm * 365,
     fuelPrice,
-    ownershipYears,
+    ownershipYears: Math.min(5, Math.max(1, ownershipYears)),
     city,
   }), [initialOwnership, dailyKm, fuelPrice, ownershipYears, city]);
 
@@ -96,7 +111,7 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
     loanTenureYears,
   }), [initialFinance, householdIncome, existingEmis, downPayment, loanTenureYears]);
 
-  // Authoritative calculation in BUYING_CAR mode
+  // Authoritative calculation in BUYING_CAR mode using real household drivers
   const economics = useMemo(() => calculateTrueCost(
     simulatedCar,
     simulatedDrivers,
@@ -222,6 +237,21 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
               ₹{economics.costPerKm.toFixed(1)}/km
             </span>
           </div>
+        </div>
+
+        {/* Household Driver Intelligence Effect */}
+        <div className="pt-2 border-t border-white/8 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#CCFF00]" />
+            <span>Household driver effect ({simulatedDrivers.length} driver{simulatedDrivers.length > 1 ? 's' : ''}):</span>
+          </div>
+          <span className={`font-bold font-mono-numbers ${
+            economics.householdAdditionalWear > 0 ? 'text-amber-400' : 'text-emerald-400'
+          }`}>
+            {economics.householdAdditionalWear > 0 
+              ? `+${formatINR(economics.householdAdditionalWear)}/yr wear` 
+              : '₹0 / base wear'}
+          </span>
         </div>
       </div>
 
@@ -388,6 +418,40 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
                 step="25000"
                 value={householdIncome}
                 onChange={(e) => setHouseholdIncome(Number(e.target.value))}
+                className="w-full accent-[#CCFF00] bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            {/* Existing Monthly EMIs */}
+            <div>
+              <div className="flex justify-between text-zinc-400 mb-1">
+                <span>Existing EMIs (Home / Other Loans)</span>
+                <span className="text-white font-bold font-mono-numbers">{formatINR(existingEmis)}/mo</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="150000"
+                step="5000"
+                value={existingEmis}
+                onChange={(e) => setExistingEmis(Number(e.target.value))}
+                className="w-full accent-[#CCFF00] bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            {/* Ownership Horizon (Honestly bounded to 1-5 years) */}
+            <div>
+              <div className="flex justify-between text-zinc-400 mb-1">
+                <span>Planned Ownership Horizon</span>
+                <span className="text-white font-bold font-mono-numbers">{ownershipYears} Years (1–5 Yrs Model)</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value={ownershipYears}
+                onChange={(e) => setOwnershipYears(Number(e.target.value))}
                 className="w-full accent-[#CCFF00] bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer"
               />
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Car, ShoppingBag, Scale, MoreHorizontal } from 'lucide-react';
+import { Home, Car, Scale, PieChart, MoreHorizontal } from 'lucide-react';
 
 interface BottomNavProps {
   currentTab: string;
@@ -10,8 +10,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
   const items = [
     { id: 'HOME', label: 'HOME', icon: Home },
     { id: 'MY_CAR', label: 'MY CAR', icon: Car },
-    { id: 'BUY', label: 'BUY', icon: ShoppingBag },
     { id: 'COMPARE', label: 'COMPARE', icon: Scale },
+    { id: 'COSTS', label: 'COSTS', icon: PieChart },
     { id: 'MORE', label: 'MORE', icon: MoreHorizontal },
   ];
 

@@ -136,7 +136,7 @@ export default function App() {
     setActiveTab('HOME');
   };
 
-  const isSubTab = ['SERVICES', 'CONSULTANCY', 'DRIVERS', 'COSTS', 'INSIGHTS', 'PROFILE', 'LANDING'].includes(activeTab);
+  const isSubTab = ['SERVICES', 'CONSULTANCY', 'DRIVERS', 'INSIGHTS', 'PROFILE', 'LANDING', 'BUY'].includes(activeTab);
 
   return (
     <div className="min-h-screen bg-[#08090C] text-[#F3F4F6] flex flex-col font-sans selection:bg-[#CCFF00] selection:text-black">
@@ -154,11 +154,11 @@ export default function App() {
         {/* Sub-tab Back Navigation */}
         {isSubTab && (
           <button
-            onClick={() => setActiveTab('MORE')}
+            onClick={() => setActiveTab(activeTab === 'BUY' ? 'HOME' : 'MORE')}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-white py-1.5 mb-2 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-[#CCFF00]" />
-            <span>Back to More</span>
+            <span>{activeTab === 'BUY' ? 'Back to Home' : 'Back to More'}</span>
           </button>
         )}
 

@@ -37,26 +37,38 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </button>
 
-        {/* Right Action: Active Vehicle Quick Pill */}
-        <div className="flex items-center gap-2">
+        {/* Right Actions: Buy Car, Active Vehicle & Keep/Sell */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => onSelectTab('BUY')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              currentTab === 'BUY'
+                ? 'bg-[#CCFF00] text-black shadow-sm shadow-[#CCFF00]/20'
+                : 'bg-white/10 text-white hover:bg-[#CCFF00] hover:text-black border border-white/10'
+            }`}
+            title="Pre-purchase affordability wizard"
+          >
+            <span className="font-mono-numbers text-[11px]">+ Buy</span>
+          </button>
+
           <button
             onClick={() => onSelectTab('MY_CAR')}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 transition-colors cursor-pointer"
           >
             <Car className="w-3.5 h-3.5 text-[#CCFF00]" />
-            <span className="max-w-[120px] truncate">{activeVehicle.model}</span>
+            <span className="max-w-[90px] sm:max-w-[120px] truncate">{activeVehicle.model}</span>
           </button>
 
           <button
             onClick={onOpenKeepSell}
-            className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+            className={`px-2 py-1 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
               economics.keepSellDecision === 'KEEP'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                 : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{economics.keepSellDecision}</span>
+            <span className="text-[11px] font-bold">{economics.keepSellDecision}</span>
           </button>
         </div>
       </div>

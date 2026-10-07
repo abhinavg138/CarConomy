@@ -9,6 +9,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'G20 LCI',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 5500000, // ₹55 Lakh
     currentValue: 4180000,  // ₹41.8 Lakh
     expectedMileage: 13.8,  // 13.8 km/L
@@ -45,6 +46,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'W206',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 6150000, // ₹61.5 Lakh
     currentValue: 4620000,  // ₹46.2 Lakh
     expectedMileage: 12.4,  // 12.4 km/L
@@ -81,6 +83,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'AN160 Legender',
     year: 2025,
     fuelType: 'Diesel',
+    energyType: 'DIESEL',
     purchasePrice: 4450000,
     currentValue: 3950000,
     expectedMileage: 12.2,
@@ -116,6 +119,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'SU2 Facelift',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 1980000,
     currentValue: 1720000,
     expectedMileage: 15.4,
@@ -151,6 +155,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'W601',
     year: 2025,
     fuelType: 'Diesel',
+    energyType: 'DIESEL',
     purchasePrice: 2650000,
     currentValue: 2280000,
     expectedMileage: 14.5,
@@ -185,6 +190,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'XV70 Hybrid',
     year: 2025,
     fuelType: 'Hybrid',
+    energyType: 'HYBRID',
     purchasePrice: 4620000, // ₹46.2 Lakh
     currentValue: 3950000,  // ₹39.5 Lakh
     expectedMileage: 19.1,  // 19.1 km/L (high efficiency!)
@@ -221,6 +227,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'B9 Facelift',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 4650000, // ₹46.5 Lakh
     currentValue: 3600000,  // ₹36.0 Lakh
     expectedMileage: 13.2,
@@ -256,6 +263,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: '95B.3',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 8800000,
     currentValue: 7400000,
     expectedMileage: 10.2,
@@ -290,6 +298,9 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'G26 EV',
     year: 2025,
     fuelType: 'EV',
+    energyType: 'ELECTRIC',
+    energyConsumptionKwhPer100Km: 17.2, // ~17.2 kWh/100 km (5.8 km/kWh)
+    batteryCapacityKwh: 83.9,
     purchasePrice: 7250000,
     currentValue: 5800000,
     expectedMileage: 5.8, // 5.8 km/kWh
@@ -324,6 +335,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'Gen 2 Facelift',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 1450000,
     currentValue: 1250000,
     expectedMileage: 16.5,
@@ -358,6 +370,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
     generation: 'B8 (Typ 3V)',
     year: 2025,
     fuelType: 'Petrol',
+    energyType: 'PETROL',
     purchasePrice: 3850000,
     currentValue: 3100000,
     expectedMileage: 14.8,
@@ -435,6 +448,8 @@ export const INITIAL_FINANCIAL_PROFILE: FinancialProfile = {
 export const INITIAL_OWNERSHIP_PROFILE: OwnershipProfile = {
   annualKm: 14600,           // 40 km/day average
   fuelPrice: 100.0,          // ₹100 / L
+  electricityPrice: 9.50,    // ₹9.50 / kWh
+  cngPrice: 82.0,            // ₹82.0 / kg
   ownershipYears: 5,
   city: 'NCR / Delhi',
   maintenanceAnnual: 42000,

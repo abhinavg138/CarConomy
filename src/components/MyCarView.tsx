@@ -20,7 +20,7 @@ import {
 import { Vehicle, CalculatedEconomics, OwnershipProfile } from '../types';
 import { ThreeCarViewer } from './ThreeCarViewer';
 import { CarPhotoViewer } from './CarPhotoViewer';
-import { formatINR } from '../utils/formatters';
+import { formatINR, formatMileage } from '../utils/formatters';
 
 interface MyCarViewProps {
   vehicle: Vehicle;
@@ -40,6 +40,7 @@ export const MyCarView: React.FC<MyCarViewProps> = ({
   economics,
   onSelectVehicle,
   onOpenAddCar,
+  onUpdateVehicle,
   onOpenKeepSell,
   onNavigateTab,
 }) => {
@@ -253,11 +254,26 @@ export const MyCarView: React.FC<MyCarViewProps> = ({
           </button>
 
           {openSection === 'REGISTRATION' && (
-            <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-2 text-xs animate-in fade-in">
-              <div className="flex justify-between text-zinc-300">
-                <span>Odometer Reading</span>
-                <span className="font-bold font-mono-numbers text-white">{vehicle.odometerKm.toLocaleString('en-IN')} km</span>
+            <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-3 text-xs animate-in fade-in">
+              {/* Interactive Odometer Slider */}
+              <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-1.5">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-zinc-400 font-medium">Odometer Reading</span>
+                  <span className="font-black font-mono-numbers text-white text-sm">
+                    {vehicle.odometerKm.toLocaleString('en-IN')} km
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="5000"
+                  max="150000"
+                  step="2500"
+                  value={vehicle.odometerKm}
+                  onChange={(e) => onUpdateVehicle?.({ ...vehicle, odometerKm: Number(e.target.value) })}
+                  className="w-full accent-blue-400 bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+                />
               </div>
+
               <div className="flex justify-between text-zinc-300">
                 <span>Registration State / City</span>
                 <span className="font-bold text-white">MH 02 (Mumbai)</span>
@@ -290,7 +306,7 @@ export const MyCarView: React.FC<MyCarViewProps> = ({
           {openSection === 'COSTS' && (
             <div className="px-4 pb-4 pt-1 border-t border-white/5 space-y-2 text-xs animate-in fade-in">
               <div className="flex justify-between text-zinc-300">
-                <span>Annual Fuel ({economics.effectiveMileage} km/L)</span>
+                <span>Annual {economics.energyMetricLabel} ({economics.energyEfficiencyDisplay})</span>
                 <span className="font-bold font-mono-numbers text-white">{formatINR(economics.annualFuelCost)}</span>
               </div>
               <div className="flex justify-between text-zinc-300">
@@ -374,8 +390,8 @@ export const MyCarView: React.FC<MyCarViewProps> = ({
                   <span className="text-sm font-bold text-white mt-0.5 block">{vehicle.fuelType}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-zinc-900 border border-white/5">
-                  <span className="text-[10px] text-zinc-400 block">ARAI Mileage</span>
-                  <span className="text-sm font-bold text-[#CCFF00] font-mono-numbers mt-0.5 block">{vehicle.expectedMileage} km/L</span>
+                  <span className="text-[10px] text-zinc-400 block">{vehicle.fuelType === 'EV' ? 'Rated Energy Economy' : 'ARAI Mileage'}</span>
+                  <span className="text-sm font-bold text-[#CCFF00] font-mono-numbers mt-0.5 block">{formatMileage(vehicle.expectedMileage, vehicle.fuelType)}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-zinc-900 border border-white/5">
                   <span className="text-[10px] text-zinc-400 block">Manufacturing Year</span>

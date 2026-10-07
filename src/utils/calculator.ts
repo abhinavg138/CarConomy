@@ -8,7 +8,8 @@ import {
   FinancialFitTier,
   LoanAmortization,
   IndividualDriverImpact,
-  KeepSellAnalysis
+  KeepSellAnalysis,
+  EnergyType
 } from '../types';
 
 /**
@@ -100,10 +101,34 @@ export function calculateLoan(
 }
 
 /**
- * 2. Fuel Cost Calculator
+ * Energy classification helper
  */
-export function calculateFuelCost(annualKm: number, effectiveMileage: number, fuelPrice: number): number {
+export function getVehicleEnergyType(vehicle: Vehicle): EnergyType {
+  if (vehicle.energyType) return vehicle.energyType;
+  if (vehicle.fuelType === 'EV') return 'ELECTRIC';
+  if (vehicle.fuelType === 'Diesel') return 'DIESEL';
+  if (vehicle.fuelType === 'Hybrid') return 'HYBRID';
+  return 'PETROL';
+}
+
+/**
+ * 2. Energy & Fuel Cost Calculator
+ * - For Petrol/Diesel: (annualKm / kmPerLitre) * fuelPrice
+ * - For CNG: (annualKm / kmPerKg) * cngPrice
+ * - For EV: (annualKm / kmPerKwh) * electricityPrice (or annualKm * (kwhPer100km / 100) * electricityPrice)
+ * Unit safe: returns cost in INR.
+ */
+export function calculateFuelCost(
+  annualKm: number,
+  effectiveMileage: number,
+  fuelPrice: number,
+  isElectric: boolean = false,
+  electricityPrice: number = 9.5
+): number {
   if (effectiveMileage <= 0) return 0;
+  if (isElectric) {
+    return Math.round((annualKm / effectiveMileage) * electricityPrice);
+  }
   return Math.round((annualKm / effectiveMileage) * fuelPrice);
 }
 
@@ -114,7 +139,9 @@ export function calculateDriverImpact(
   drivers: Driver[],
   baseMileage: number,
   fuelPrice: number,
-  city: string = 'NCR / Delhi'
+  city: string = 'NCR / Delhi',
+  isEV: boolean = false,
+  electricityPrice: number = 9.5
 ): {
   totalDailyKm: number;
   totalAnnualKm: number;
@@ -128,8 +155,8 @@ export function calculateDriverImpact(
   if (!drivers || drivers.length === 0) {
     const dailyKm = 40;
     const annualKm = dailyKm * 365;
-    const effMileage = Math.max(5, Number((baseMileage * cityFactor.mileageMult).toFixed(1)));
-    const annualFuel = calculateFuelCost(annualKm, effMileage, fuelPrice);
+    const effMileage = Math.max(isEV ? 2.5 : 5.0, Number((baseMileage * cityFactor.mileageMult).toFixed(1)));
+    const annualFuel = calculateFuelCost(annualKm, effMileage, isEV ? electricityPrice : fuelPrice, isEV, electricityPrice);
     
     return {
       totalDailyKm: dailyKm,
@@ -169,11 +196,13 @@ export function calculateDriverImpact(
     let driverWearCost = 0;
 
     if (driver.drivingStyle === 'CONSERVATIVE') {
-      styleMileageMult = 1.07;
-      driverWearCost = Math.round(driverAnnualKm * 0.4); // gentle on brakes/tyres
+      // Gentle on brakes/tyres. For EV, regenerative braking recovers more range
+      styleMileageMult = isEV ? 1.08 : 1.07;
+      driverWearCost = Math.round(driverAnnualKm * (isEV ? 0.35 : 0.40));
     } else if (driver.drivingStyle === 'AGGRESSIVE') {
-      styleMileageMult = 0.83;
-      driverWearCost = Math.round(driverAnnualKm * 1.5 + 8500); // aggressive braking, hard acceleration
+      // Hard acceleration & braking. For EV, instant motor torque burns more tyres and battery
+      styleMileageMult = isEV ? 0.80 : 0.83;
+      driverWearCost = Math.round(driverAnnualKm * (isEV ? 1.6 : 1.5) + (isEV ? 9000 : 8500));
       aggressiveCount++;
     } else {
       styleMileageMult = 1.0;
@@ -182,13 +211,19 @@ export function calculateDriverImpact(
 
     // City vs Highway split
     const cityRatio = driver.cityHighwaySplit / 100;
-    const splitMileageFactor = 1.04 - (cityRatio * 0.16); // High city driving reduces efficiency
+    // For EV: urban stop-and-go with regenerative braking is actually MORE efficient than high-speed highway cruising
+    const splitMileageFactor = isEV 
+      ? 0.94 + (cityRatio * 0.12)
+      : 1.04 - (cityRatio * 0.16);
+
+    const minEff = isEV ? 2.5 : 4.5;
     const driverEffMileage = Math.max(
-      4.5,
+      minEff,
       Number((baseMileage * styleMileageMult * splitMileageFactor * cityFactor.mileageMult).toFixed(1))
     );
 
-    const driverFuelCost = calculateFuelCost(driverAnnualKm, driverEffMileage, fuelPrice);
+    const tariff = isEV ? electricityPrice : fuelPrice;
+    const driverFuelCost = calculateFuelCost(driverAnnualKm, driverEffMileage, tariff, isEV, electricityPrice);
     totalHouseholdWear += driverWearCost;
 
     const weight = totalDailyKm > 0 ? driver.dailyKm / totalDailyKm : 1 / drivers.length;
@@ -208,7 +243,8 @@ export function calculateDriverImpact(
     };
   });
 
-  const effectiveMileage = Math.max(4.5, Number((baseMileage * totalWeightedMileageRatio).toFixed(1)));
+  const minTotalEff = isEV ? 2.5 : 4.5;
+  const effectiveMileage = Math.max(minTotalEff, Number((baseMileage * totalWeightedMileageRatio).toFixed(1)));
 
   return {
     totalDailyKm,
@@ -581,23 +617,49 @@ export function calculateTrueCost(
   finance: FinancialProfile,
   mode: 'CURRENT_CAR' | 'BUYING_CAR' = 'CURRENT_CAR'
 ): CalculatedEconomics {
-  // 1. Driver & Household calculation
-  const household = calculateDriverImpact(drivers, vehicle.expectedMileage, ownership.fuelPrice, ownership.city);
+  // 1. Energy Type & Tariff Resolution
+  const energyType = getVehicleEnergyType(vehicle);
+  const isEV = energyType === 'ELECTRIC';
+  const elecPrice = ownership.electricityPrice ?? 9.50;
+  const cngPrice = ownership.cngPrice ?? 82.0;
+  const tariff = isEV ? elecPrice : (energyType === 'CNG' ? cngPrice : ownership.fuelPrice);
+
+  // 2. Driver & Household calculation
+  const household = calculateDriverImpact(drivers, vehicle.expectedMileage, tariff, ownership.city, isEV, elecPrice);
   const annualKm = household.totalAnnualKm;
   const effectiveMileage = household.effectiveMileage;
 
-  // 2. Fuel cost
-  const annualFuelCost = calculateFuelCost(annualKm, effectiveMileage, ownership.fuelPrice);
+  // 3. Fuel / Energy cost
+  const annualFuelCost = calculateFuelCost(annualKm, effectiveMileage, tariff, isEV, elecPrice);
   const monthlyFuelCost = Math.round(annualFuelCost / 12);
+  const energyCostPerKm = Number((annualFuelCost / Math.max(1, annualKm)).toFixed(2));
 
-  // 3. Maintenance & Wear
-  const baseMaint = ownership.maintenanceAnnual || vehicle.maintenanceEstimate;
+  // Formatted energy display indicators
+  const energyMetricLabel = isEV ? 'Energy' : (energyType === 'CNG' ? 'CNG' : 'Fuel');
+  const energyEfficiencyDisplay = isEV
+    ? `${(100 / Math.max(0.1, effectiveMileage)).toFixed(1)} kWh/100 km (${effectiveMileage.toFixed(1)} km/kWh)`
+    : (energyType === 'CNG' ? `${effectiveMileage.toFixed(1)} km/kg` : `${effectiveMileage.toFixed(1)} km/L`);
+  const energyTariffDisplay = isEV
+    ? `₹${elecPrice.toFixed(2)}/kWh`
+    : (energyType === 'CNG' ? `₹${cngPrice.toFixed(2)}/kg` : `₹${ownership.fuelPrice.toFixed(2)}/L`);
+
+  // 4. Maintenance & Wear with Odometer Milestones
+  const odoKm = vehicle.odometerKm || 0;
+  let odoMaintMult = 1.0;
+  if (odoKm > 90000) {
+    odoMaintMult = 1.35 + Math.min(0.35, ((odoKm - 90000) / 100000) * 0.2);
+  } else if (odoKm > 50000) {
+    odoMaintMult = 1.15 + ((odoKm - 50000) / 40000) * 0.2;
+  } else if (odoKm > 20000) {
+    odoMaintMult = 1.0 + ((odoKm - 20000) / 30000) * 0.15;
+  }
+  const baseMaint = (ownership.maintenanceAnnual || vehicle.maintenanceEstimate) * odoMaintMult;
   const annualMaintenance = Math.round(baseMaint + household.additionalWearAnnual);
 
-  // 4. Insurance
+  // 5. Insurance
   const annualInsurance = ownership.insuranceAnnual || vehicle.insuranceEstimate;
 
-  // 5. Real Loan Amortization tailored specifically to THIS vehicle's price
+  // 6. Real Loan Amortization tailored specifically to THIS vehicle's price
   const downPaymentForThisCar = finance.downPaymentPercent 
     ? Math.round(vehicle.purchasePrice * (finance.downPaymentPercent / 100))
     : Math.min(vehicle.purchasePrice * 0.9, Math.max(vehicle.purchasePrice * 0.1, finance.downPayment));
@@ -610,15 +672,16 @@ export function calculateTrueCost(
     ownership.ownershipYears
   );
 
-  // 6. Depreciation & Resale Projections
+  // 7. Depreciation & Resale Projections
   const dep = calculateDepreciation(vehicle, ownership.ownershipYears, mode);
   const annualDepreciation = dep.annualDepreciation;
 
-  // 7. Repairs & Tyres
-  const annualRepairs = ownership.repairsAnnual || Math.round(vehicle.purchasePrice * 0.0035 + 8000);
-  const annualTyres = ownership.tyresAnnual || Math.round(annualKm * 0.95);
+  // 8. Repairs & Tyres with Odometer Wear Factor
+  const odoRepairFactor = odoKm > 50000 ? (1 + Math.min(0.5, (odoKm - 50000) / 100000)) : 1.0;
+  const annualRepairs = Math.round((ownership.repairsAnnual || Math.round(vehicle.purchasePrice * 0.0035 + 8000)) * odoRepairFactor);
+  const annualTyres = ownership.tyresAnnual || Math.round(annualKm * (isEV ? 1.05 : 0.95)); // EVs slightly heavier on tyres
 
-  // 8. Annual Financed Interest (Year 1)
+  // 9. Annual Financed Interest (Year 1)
   const y1InterestInfo = calculateNext12MonthsLoanInterest(
     loan.principal,
     finance.interestRate,
@@ -627,7 +690,7 @@ export function calculateTrueCost(
   );
   const annualFinancingInterest = y1InterestInfo.interestNext12M;
 
-  // 9. Total Annual Ownership Cost (Year 1)
+  // 10. Total Annual Ownership Cost (Year 1)
   const annualTotalCost = 
     annualFuelCost +
     annualMaintenance +
@@ -641,7 +704,7 @@ export function calculateTrueCost(
   const costPerKm = Number((annualTotalCost / Math.max(1, annualKm)).toFixed(1));
   const monthlyOwnershipCost = Math.round(annualTotalCost / 12);
 
-  // 10. Multi-year Coherent Financial Engine (Years 1 to 5 strictly reconciled)
+  // 11. Multi-year Coherent Financial Engine (Years 1 to 5 strictly reconciled)
   const yearlyData: YearlyFinancialBreakdown[] = [];
   const yearlyCumulativeTCO: number[] = [];
   let runningCumulative = 0;
@@ -698,7 +761,7 @@ export function calculateTrueCost(
   const fiveYearTotalKm = annualKm * 5;
   const fiveYearCostPerKm = Number((fiveYearTotalCost / Math.max(1, fiveYearTotalKm)).toFixed(1));
 
-  // 11. Ownership Tenure Cost (Honestly bounded to 1 to 5 years)
+  // 12. Ownership Tenure Cost (Honestly bounded to 1 to 5 years)
   const tenureYearsBounded = Math.max(1, Math.min(5, Math.round(ownership.ownershipYears)));
   const totalTenureCost = yearlyData.slice(0, tenureYearsBounded).reduce((acc, d) => acc + d.yearTotal, 0);
   const tenureResaleValue = yearlyData[tenureYearsBounded - 1].vehicleValueAtYearEnd;
@@ -706,7 +769,7 @@ export function calculateTrueCost(
   const tenureKm = annualKm * tenureYearsBounded;
   const tenureCostPerKm = Number((totalTenureCost / Math.max(1, tenureKm)).toFixed(1));
 
-  // 12. Keep or Sell Analysis
+  // 13. Keep or Sell Analysis
   const keepSellDetails = calculateKeepSell(
     vehicle,
     annualMaintenance,
@@ -717,7 +780,7 @@ export function calculateTrueCost(
     finance.loanTenureYears
   );
 
-  // 13. Financial Affordability Fit
+  // 14. Financial Affordability Fit
   const fit = calculateFinancialFit(
     loan.monthlyEMI,
     monthlyFuelCost,
@@ -742,6 +805,12 @@ export function calculateTrueCost(
     annualTotalCost,
     costPerKm,
     monthlyOwnershipCost,
+
+    energyType,
+    energyMetricLabel,
+    energyEfficiencyDisplay,
+    energyTariffDisplay,
+    energyCostPerKm,
 
     householdDailyKm: household.totalDailyKm,
     householdAdditionalWear: household.additionalWearAnnual,
@@ -787,32 +856,75 @@ export function calculateTrueCost(
 }
 
 /**
- * 8. Comparison Engine between 2 cars
+ * 8. Comparison Engine between 2 or 3 cars with Dynamic Financial Verdict
  */
 export function calculateComparison(
   carA: Vehicle,
   carB: Vehicle,
   drivers: Driver[],
   ownership: OwnershipProfile,
-  finance: FinancialProfile
+  finance: FinancialProfile,
+  carC?: Vehicle
 ) {
   const ecoA = calculateTrueCost(carA, drivers, ownership, finance, 'BUYING_CAR');
   const ecoB = calculateTrueCost(carB, drivers, ownership, finance, 'BUYING_CAR');
+  const ecoC = carC ? calculateTrueCost(carC, drivers, ownership, finance, 'BUYING_CAR') : undefined;
 
   const diff5Year = Math.abs(ecoA.fiveYearTotalCost - ecoB.fiveYearTotalCost);
   const winnerIsA = ecoA.fiveYearTotalCost <= ecoB.fiveYearTotalCost;
   const winnerCar = winnerIsA ? carA : carB;
   const loserCar = winnerIsA ? carB : carA;
+  const winnerEco = winnerIsA ? ecoA : ecoB;
+  const loserEco = winnerIsA ? ecoB : ecoA;
   const savings = diff5Year;
+
+  // Synthesize dynamic explanation of WHY winner makes more financial sense
+  const diffDep = loserEco.fiveYearDepreciationTotal - winnerEco.fiveYearDepreciationTotal;
+  const diffFuel = loserEco.fiveYearFuelTotal - winnerEco.fiveYearFuelTotal;
+  const diffMaint = (loserEco.fiveYearMaintenanceTotal + loserEco.fiveYearRepairsTyresTotal) - 
+                    (winnerEco.fiveYearMaintenanceTotal + winnerEco.fiveYearRepairsTyresTotal);
+  const diffInterest = loserEco.fiveYearInterestTotal - winnerEco.fiveYearInterestTotal;
+
+  const reasons: string[] = [];
+  if (diffDep > 50000) {
+    reasons.push(`lower depreciation (saving ₹${(diffDep / 100000).toFixed(1)}L)`);
+  }
+  if (diffFuel > 40000) {
+    const energyLabel = winnerEco.energyType === 'ELECTRIC' ? 'running energy' : 'fuel';
+    reasons.push(`lower ${energyLabel} costs (saving ₹${(diffFuel / 100000).toFixed(1)}L)`);
+  }
+  if (diffMaint > 30000) {
+    reasons.push(`lower scheduled maintenance & wear (saving ₹${(diffMaint / 100000).toFixed(1)}L)`);
+  }
+  if (diffInterest > 40000) {
+    reasons.push(`lower financing interest (saving ₹${(diffInterest / 100000).toFixed(1)}L)`);
+  }
+
+  let verdictExplanation = '';
+  if (reasons.length > 0) {
+    verdictExplanation = `${winnerCar.make} ${winnerCar.model} wins primarily because of ${reasons.slice(0, 2).join(' and ')} over 5 years.`;
+  } else {
+    verdictExplanation = `${winnerCar.make} ${winnerCar.model} has lower overall acquisition and running costs over a 5-year ownership horizon.`;
+  }
 
   return {
     carA,
     carB,
+    carC,
     ecoA,
     ecoB,
+    ecoC,
     winnerIsA,
     winnerCar,
     loserCar,
+    winnerEco,
+    loserEco,
     savings,
+    verdictTitle: `${winnerCar.make.toUpperCase()} ${winnerCar.model.toUpperCase()} WINS`,
+    verdictExplanation,
+    diffDep,
+    diffFuel,
+    diffMaint,
+    diffInterest,
   };
 }

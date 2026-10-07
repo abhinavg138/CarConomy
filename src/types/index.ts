@@ -1,5 +1,7 @@
 export type FuelType = 'Petrol' | 'Diesel' | 'Hybrid' | 'EV';
 
+export type EnergyType = 'PETROL' | 'DIESEL' | 'CNG' | 'ELECTRIC' | 'HYBRID';
+
 export type DrivingStyle = 'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE';
 
 export type DriverRole = 'Me' | 'Wife / Husband' | 'Children' | 'Parents' | 'Chauffeur' | 'Other';
@@ -26,9 +28,12 @@ export interface Vehicle {
   year: number;
   generation?: string;
   fuelType: FuelType;
+  energyType?: EnergyType;
+  energyConsumptionKwhPer100Km?: number; // e.g. 17.2 for BMW i4
+  batteryCapacityKwh?: number; // e.g. 83.9 for BMW i4
   purchasePrice: number; // in INR
   currentValue: number; // in INR (for current car)
-  expectedMileage: number; // km/L or km/kWh
+  expectedMileage: number; // km/L for ICE/Hybrid, or km/kWh for EV
   maintenanceEstimate: number; // annual in INR
   insuranceEstimate: number; // annual in INR
   depreciationRate: number; // annual rate e.g. 0.11
@@ -74,7 +79,9 @@ export interface FinancialProfile {
 
 export interface OwnershipProfile {
   annualKm: number;
-  fuelPrice: number; // per liter in INR
+  fuelPrice: number; // per liter in INR (for Petrol/Diesel)
+  electricityPrice?: number; // per kWh in INR (default e.g. 9.5 for EV)
+  cngPrice?: number; // per kg in INR (default e.g. 82.0 for CNG)
   ownershipYears: number;
   city: string; // e.g. "Mumbai", "NCR", "Bengaluru", "Pune", "Expressway"
   maintenanceAnnual?: number;
@@ -153,7 +160,7 @@ export interface CalculatedEconomics {
   // Annual figures (Year 1)
   annualKm: number;
   effectiveMileage: number;
-  annualFuelCost: number;
+  annualFuelCost: number; // Represents annual energy/fuel outlay in INR
   monthlyFuelCost: number;
   annualMaintenance: number;
   annualInsurance: number;
@@ -164,6 +171,13 @@ export interface CalculatedEconomics {
   annualTotalCost: number;
   costPerKm: number;
   monthlyOwnershipCost: number;
+
+  // Energy & Fuel Intelligence
+  energyType: EnergyType;
+  energyMetricLabel: string; // "Fuel" or "Energy"
+  energyEfficiencyDisplay: string; // e.g. "17.2 kWh/100 km" (EV) or "13.8 km/L" (ICE)
+  energyTariffDisplay: string; // e.g. "₹9.5/kWh" (EV) or "₹100.0/L" (Petrol)
+  energyCostPerKm: number; // in INR
 
   // Household driver impacts
   householdDailyKm: number;

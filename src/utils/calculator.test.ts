@@ -144,9 +144,62 @@ export function runEngineTests(): { success: boolean; results: string[] } {
                              bmwEco.yearlyCumulativeTCO[4] === bmwEco.fiveYearTotalCost;
   results.push(`Test 11 (Financial Reconciliation): Components ₹${componentSum.toLocaleString()} === Headline ₹${bmwEco.fiveYearTotalCost.toLocaleString()} [${reconciliationPass ? 'PASS' : 'FAIL'}]`);
 
+  // 12. EV Economics Test: BMW i4 must never produce km/L, must use kWh/100 km and electricity price
+  const bmwi4 = INITIAL_VEHICLES.find(v => v.id === 'bmw-i4') || INITIAL_VEHICLES[8];
+  const evEco = calculateTrueCost(bmwi4, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
+  const evPass = evEco.energyType === 'ELECTRIC' && 
+                 !evEco.energyEfficiencyDisplay.includes('km/L') &&
+                 evEco.energyEfficiencyDisplay.includes('kWh/100 km') &&
+                 evEco.energyMetricLabel === 'Energy' &&
+                 evEco.annualFuelCost < 75000; // Electricity is ~₹58K for 32,850km vs ~₹2.83L for petrol
+  results.push(`Test 12 (EV Economics: BMW i4): Energy metric = ${evEco.energyEfficiencyDisplay}, Annual Energy = ₹${evEco.annualFuelCost.toLocaleString()} [${evPass ? 'PASS' : 'FAIL'}]`);
+
+  // 13. Driver Daily Km Slider Test: Increasing daily km must increase annual km and total cost
+  const lowKmDrivers: Driver[] = [
+    { id: 'd1', name: 'You', role: 'Me', dailyKm: 15, cityHighwaySplit: 70, drivingStyle: 'MODERATE' },
+  ];
+  const highKmDrivers: Driver[] = [
+    { id: 'd1', name: 'You', role: 'Me', dailyKm: 50, cityHighwaySplit: 70, drivingStyle: 'MODERATE' },
+  ];
+  const lowEco = calculateTrueCost(testCar, lowKmDrivers, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const highEco = calculateTrueCost(testCar, highKmDrivers, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const driverKmPass = highEco.annualKm > lowEco.annualKm && highEco.annualTotalCost > lowEco.annualTotalCost;
+  results.push(`Test 13 (Driver Daily Km): 15km/d (₹${lowEco.annualTotalCost.toLocaleString()}) vs 50km/d (₹${highEco.annualTotalCost.toLocaleString()}) [${driverKmPass ? 'PASS' : 'FAIL'}]`);
+
+  // 14. Driving Style Test: Conservative vs Aggressive alters wear and efficiency
+  const consDrivers: Driver[] = [
+    { id: 'd1', name: 'You', role: 'Me', dailyKm: 30, cityHighwaySplit: 70, drivingStyle: 'CONSERVATIVE' },
+  ];
+  const aggrDrivers: Driver[] = [
+    { id: 'd1', name: 'You', role: 'Me', dailyKm: 30, cityHighwaySplit: 70, drivingStyle: 'AGGRESSIVE' },
+  ];
+  const consEco = calculateTrueCost(testCar, consDrivers, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const aggrEco = calculateTrueCost(testCar, aggrDrivers, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const stylePass = aggrEco.householdAdditionalWear > consEco.householdAdditionalWear && 
+                    aggrEco.effectiveMileage < consEco.effectiveMileage;
+  results.push(`Test 14 (Driving Style): Conservative (${consEco.effectiveMileage} km/L, +₹${consEco.householdAdditionalWear}) vs Aggressive (${aggrEco.effectiveMileage} km/L, +₹${aggrEco.householdAdditionalWear}) [${stylePass ? 'PASS' : 'FAIL'}]`);
+
+  // 15. Odometer Scaling Test: Higher odometer increases maintenance and repairs
+  const lowOdoCar = { ...testCar, odometerKm: 15000 };
+  const highOdoCar = { ...testCar, odometerKm: 75000 };
+  const lowOdoEco = calculateTrueCost(lowOdoCar, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const highOdoEco = calculateTrueCost(highOdoCar, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const odoPass = highOdoEco.annualMaintenance > lowOdoEco.annualMaintenance && 
+                  highOdoEco.annualTotalCost > lowOdoEco.annualTotalCost;
+  results.push(`Test 15 (Odometer Scaling): 15k km (Maint ₹${lowOdoEco.annualMaintenance.toLocaleString()}) vs 75k km (Maint ₹${highOdoEco.annualMaintenance.toLocaleString()}) [${odoPass ? 'PASS' : 'FAIL'}]`);
+
+  // 16. Fuel Price Slider Test: ₹100/L vs ₹115/L
+  const own100 = { ...INITIAL_OWNERSHIP_PROFILE, fuelPrice: 100 };
+  const own115 = { ...INITIAL_OWNERSHIP_PROFILE, fuelPrice: 115 };
+  const eco100 = calculateTrueCost(testCar, INITIAL_DRIVERS, own100, INITIAL_FINANCIAL_PROFILE);
+  const eco115 = calculateTrueCost(testCar, INITIAL_DRIVERS, own115, INITIAL_FINANCIAL_PROFILE);
+  const fuelPricePass = eco115.annualFuelCost > eco100.annualFuelCost;
+  results.push(`Test 16 (Fuel Price): ₹100/L (₹${eco100.annualFuelCost.toLocaleString()}) vs ₹115/L (₹${eco115.annualFuelCost.toLocaleString()}) [${fuelPricePass ? 'PASS' : 'FAIL'}]`);
+
   const allPassed = emiCorrect && cretaPrincipalCorrect && fuelCorrect && depModeCorrect && 
                     driverWearCorrect && keepCheaperPass && sellCheaperPass && invariantPass && 
-                    financedPass && paidPass && demoNarrativePass && reconciliationPass;
+                    financedPass && paidPass && demoNarrativePass && reconciliationPass &&
+                    evPass && driverKmPass && stylePass && odoPass && fuelPricePass;
 
   return {
     success: allPassed,

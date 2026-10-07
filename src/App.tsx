@@ -111,6 +111,8 @@ export default function App() {
   }, [vehicles, activeVehicleId, drivers, financialProfile, ownershipProfile]);
 
   // Android Native Platform Lifecycle & Hardware Back Button Handling
+  const isSubTab = ['SERVICES', 'CONSULTANCY', 'DRIVERS', 'INSIGHTS', 'PROFILE', 'LANDING', 'BUY'].includes(activeTab);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
@@ -172,8 +174,6 @@ export default function App() {
     setOwnershipProfile(INITIAL_OWNERSHIP_PROFILE);
     setActiveTab('HOME');
   };
-
-  const isSubTab = ['SERVICES', 'CONSULTANCY', 'DRIVERS', 'INSIGHTS', 'PROFILE', 'LANDING', 'BUY'].includes(activeTab);
 
   return (
     <div className="min-h-screen bg-[#08090C] text-[#F3F4F6] flex flex-col font-sans selection:bg-[#CCFF00] selection:text-black">
@@ -256,6 +256,8 @@ export default function App() {
               setActiveVehicleId(winner.id);
               setActiveTab('MY_CAR');
             }}
+            onUpdateOwnership={setOwnershipProfile}
+            onUpdateFinance={setFinancialProfile}
           />
         )}
 
@@ -299,6 +301,10 @@ export default function App() {
             finance={financialProfile}
             ownership={ownershipProfile}
             economics={currentEconomics}
+            onUpdateVehicle={handleUpdateVehicle}
+            onUpdateDrivers={setDrivers}
+            onUpdateFinance={setFinancialProfile}
+            onUpdateOwnership={setOwnershipProfile}
           />
         )}
 

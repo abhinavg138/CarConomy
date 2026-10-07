@@ -84,7 +84,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="pt-3 space-y-2.5">
             {/* Multi-segment progress bar */}
             <div className="h-2 w-full rounded-full bg-zinc-800 flex overflow-hidden">
-              <div style={{ width: `${fuelPct}%` }} className="bg-amber-400 h-full" title={`Fuel ${fuelPct}%`} />
+              <div style={{ width: `${fuelPct}%` }} className={`${economics.energyType === 'ELECTRIC' ? 'bg-[#CCFF00]' : 'bg-amber-400'} h-full`} title={`${economics.energyMetricLabel} ${fuelPct}%`} />
               <div style={{ width: `${maintPct}%` }} className="bg-blue-400 h-full" title={`Maintenance ${maintPct}%`} />
               <div style={{ width: `${insPct}%` }} className="bg-emerald-400 h-full" title={`Insurance ${insPct}%`} />
               <div style={{ width: `${depPct}%` }} className="bg-rose-400 h-full" title={`Depreciation ${depPct}%`} />
@@ -94,7 +94,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="grid grid-cols-4 gap-1 pt-1 text-left">
               <div>
                 <span className="text-[10px] text-zinc-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Fuel
+                  <span className={`w-1.5 h-1.5 rounded-full ${economics.energyType === 'ELECTRIC' ? 'bg-[#CCFF00]' : 'bg-amber-400'}`} /> {economics.energyMetricLabel}
                 </span>
                 <span className="text-xs font-bold text-white font-mono-numbers block mt-0.5">
                   {formatINR(economics.annualFuelCost)}

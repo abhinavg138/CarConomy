@@ -39,11 +39,44 @@ export function formatCostPerKm(val: number): string {
   return `₹${val.toFixed(1)} / km`;
 }
 
-export function formatMileage(kmPerL: number, fuelType: string = 'Petrol'): string {
-  if (fuelType === 'EV') {
-    return `${kmPerL.toFixed(1)} km/kWh`;
+export function formatMileage(val: number, fuelType: string = 'Petrol'): string {
+  const isEV = fuelType === 'EV' || fuelType === 'ELECTRIC';
+  if (isEV) {
+    const kwhPer100 = 100 / Math.max(0.1, val);
+    return `${kwhPer100.toFixed(1)} kWh/100 km (${val.toFixed(1)} km/kWh)`;
   }
-  return `${kmPerL.toFixed(1)} km/L`;
+  if (fuelType === 'CNG') {
+    return `${val.toFixed(1)} km/kg`;
+  }
+  return `${val.toFixed(1)} km/L`;
+}
+
+export function formatEnergyEfficiency(val: number, energyOrFuelType: string = 'Petrol'): string {
+  const isEV = energyOrFuelType === 'EV' || energyOrFuelType === 'ELECTRIC';
+  if (isEV) {
+    const kwhPer100 = 100 / Math.max(0.1, val);
+    return `${kwhPer100.toFixed(1)} kWh/100 km`;
+  }
+  if (energyOrFuelType === 'CNG') {
+    return `${val.toFixed(1)} km/kg`;
+  }
+  return `${val.toFixed(1)} km/L`;
+}
+
+export function formatEnergyTariff(rate: number, energyOrFuelType: string = 'Petrol'): string {
+  const isEV = energyOrFuelType === 'EV' || energyOrFuelType === 'ELECTRIC';
+  if (isEV) {
+    return `₹${rate.toFixed(2)}/kWh`;
+  }
+  if (energyOrFuelType === 'CNG') {
+    return `₹${rate.toFixed(2)}/kg`;
+  }
+  return `₹${rate.toFixed(2)}/L`;
+}
+
+export function formatEnergyLabel(energyOrFuelType: string = 'Petrol'): string {
+  const isEV = energyOrFuelType === 'EV' || energyOrFuelType === 'ELECTRIC';
+  return isEV ? 'Energy' : 'Fuel';
 }
 
 export function formatNumber(val: number): string {

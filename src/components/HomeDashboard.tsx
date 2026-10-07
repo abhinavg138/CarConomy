@@ -163,9 +163,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         <p className="text-xs sm:text-sm text-zinc-300 leading-snug mt-2.5">
-          {isKeep
-            ? `Keeping your ${vehicle.model} for another year looks financially better.`
-            : `Selling your ${vehicle.model} now avoids upcoming steep depreciation.`}
+          {economics.keepSellReason}
         </p>
 
         <button

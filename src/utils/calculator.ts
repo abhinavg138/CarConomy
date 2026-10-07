@@ -311,60 +311,188 @@ export function calculateDepreciation(
 /**
  * 5. P1 #1: Real Keep vs Sell Economic Comparison
  */
+/**
+ * Helper to compute precise vehicle age in months and years from purchaseDate or model year
+ */
+export function getVehicleAge(vehicle: Vehicle): { ageYears: number; ageMonths: number } {
+  const currentYear = new Date().getFullYear();
+  let ageMonths = 12;
+  let ageYears = 1.0;
+
+  if (vehicle.purchaseDate) {
+    const parsed = new Date(vehicle.purchaseDate);
+    if (!isNaN(parsed.getTime())) {
+      const diffMs = Math.max(0, new Date().getTime() - parsed.getTime());
+      ageMonths = Math.max(1, Math.round(diffMs / (30.4375 * 24 * 3600 * 1000)));
+      ageYears = Math.max(0.1, Number((ageMonths / 12).toFixed(1)));
+      return { ageYears, ageMonths };
+    }
+  }
+
+  const diffYears = Math.max(0, currentYear - vehicle.year);
+  ageYears = diffYears > 0 ? diffYears : 1.0;
+  ageMonths = Math.round(ageYears * 12);
+  return { ageYears, ageMonths };
+}
+
+/**
+ * Calculates exact interest payable in the upcoming 12 months based on loan age and amortization schedule
+ */
+export function calculateNext12MonthsLoanInterest(
+  principal: number,
+  annualRatePercent: number,
+  tenureYears: number,
+  ageMonths: number
+): {
+  interestNext12M: number;
+  remainingPrincipalNow: number;
+  remainingPrincipalAfter12M: number;
+} {
+  if (principal <= 0 || annualRatePercent <= 0 || tenureYears <= 0) {
+    return { interestNext12M: 0, remainingPrincipalNow: 0, remainingPrincipalAfter12M: 0 };
+  }
+
+  const monthlyRate = annualRatePercent / 12 / 100;
+  const totalMonths = tenureYears * 12;
+  const emi = calculateEMI(principal, annualRatePercent, tenureYears);
+
+  // Amortize month by month from month 1 to current elapsed month
+  let balance = principal;
+  const elapsedMonths = Math.min(totalMonths, Math.max(0, ageMonths));
+
+  for (let m = 1; m <= elapsedMonths; m++) {
+    const interestPart = balance * monthlyRate;
+    const principalPart = emi - interestPart;
+    balance = Math.max(0, balance - principalPart);
+  }
+
+  const remainingPrincipalNow = Math.round(balance);
+
+  // Next 12 months amortization
+  let interestNext12M = 0;
+  for (let m = elapsedMonths + 1; m <= Math.min(totalMonths, elapsedMonths + 12); m++) {
+    const interestPart = balance * monthlyRate;
+    const principalPart = emi - interestPart;
+    interestNext12M += interestPart;
+    balance = Math.max(0, balance - principalPart);
+  }
+
+  const remainingPrincipalAfter12M = Math.round(balance);
+
+  return {
+    interestNext12M: Math.round(interestNext12M),
+    remainingPrincipalNow,
+    remainingPrincipalAfter12M,
+  };
+}
+
+/**
+ * 5. P0 #4: Real Like-for-Like Keep vs Sell & Replace Economic Comparison
+ * Evaluates identical 12-month horizon for both choices:
+ * - KEEP: depreciation + maintenance cliff + insurance + fuel + loan interest
+ * - SELL & REPLACE: transaction fees + replacement depreciation + replacement financing + replacement maintenance + replacement insurance + fuel
+ * Strict invariant: decision is 'KEEP' if and only if costToKeep12M <= costToSellReplace12M.
+ */
 export function calculateKeepSell(
   vehicle: Vehicle,
   annualMaintenance: number,
   annualInsurance: number,
   annualFuelCost: number,
-  loan: LoanAmortization
+  loan: LoanAmortization,
+  loanInterestRatePercent: number = 8.85,
+  loanTenureYears: number = 5
 ): KeepSellAnalysis {
-  // Option A: KEEP the vehicle for another 12 months
-  // Next 12 months depreciation based on current market curve
-  const nextYearDepRate = Math.max(0.075, vehicle.depreciationRate * 0.94);
+  const { ageYears, ageMonths } = getVehicleAge(vehicle);
+
+  // OPTION A: KEEP for next 12 months
+  // Next 12 months depreciation based on age curve
+  const nextYearDepRate = Math.max(0.065, vehicle.depreciationRate * Math.pow(0.92, Math.max(0, ageYears - 1)));
   const depreciation12M = Math.round(vehicle.currentValue * nextYearDepRate);
-  
-  // As car ages (odometer > 30k or age > 2 years), maintenance incurs scheduled service cliff
-  const ageYears = Math.max(0, 2026 - vehicle.year);
-  const odometerCliff = vehicle.odometerKm > 30000 ? 1.25 : 1.0;
-  const ageCliff = ageYears >= 3 ? 1.3 : ageYears >= 2 ? 1.15 : 1.0;
+  const expectedValueAfterOneYear = Math.max(0, vehicle.currentValue - depreciation12M);
+
+  // Maintenance cliff for ageing car (odometer > 30k or age > 2 years)
+  const odometerCliff = vehicle.odometerKm > 40000 ? 1.3 : vehicle.odometerKm > 25000 ? 1.18 : 1.0;
+  const ageCliff = ageYears >= 4 ? 1.35 : ageYears >= 2 ? 1.18 : 1.0;
   const maintenance12M = Math.round(annualMaintenance * ageCliff * odometerCliff);
 
-  const insurance12M = Math.round(annualInsurance * 0.93); // slight depreciation on IDV
+  const insurance12M = Math.round(annualInsurance * 0.92); // Slight depreciation on IDV
   const fuel12M = annualFuelCost;
-  const loanInterest12M = loan.interestPaidDuringOwnership > 0 
-    ? Math.round(loan.interestPaidDuringOwnership / Math.max(1, loan.totalPayments / 12)) 
-    : 0;
+
+  // Exact 12-month loan interest for current vehicle
+  const loanInfo = calculateNext12MonthsLoanInterest(
+    loan.principal,
+    loanInterestRatePercent,
+    loanTenureYears,
+    ageMonths
+  );
+  const loanInterest12M = loanInfo.interestNext12M;
 
   const costToKeep12M = depreciation12M + maintenance12M + insurance12M + fuel12M + loanInterest12M;
 
-  // Option B: SELL NOW
-  // Transaction fees, pre-sale inspection & pre-owned marketplace broker margin (~3.5%)
-  const transactionCost = Math.round(vehicle.currentValue * 0.035);
-  const currentNetResale = Math.max(0, vehicle.currentValue - transactionCost - loan.remainingPrincipalAtExit);
-  
-  // Replacement friction: cost of acquiring alternative car or new car 1st year depreciation hit
-  const replacementCost12M = Math.round(vehicle.currentValue * 0.16);
-  const costToSellNow = transactionCost + replacementCost12M;
+  // OPTION B: SELL TODAY & REPLACE (Like-for-like 12-month horizon)
+  // Sell current vehicle today:
+  const transactionCost = Math.round(vehicle.currentValue * 0.035); // 3.5% broker, listing & transfer margin
+  const sellTodayValue = vehicle.currentValue;
+  const currentNetResale = Math.max(0, vehicle.currentValue - transactionCost - loanInfo.remainingPrincipalNow);
 
-  const breakEvenDifference = Math.abs(costToKeep12M - costToSellNow);
+  // Replacement vehicle 12-month ownership costs:
+  // 1. Replacement year-1 depreciation (brand new / newer vehicle experiences steeper year-1 drop ~15.5%)
+  const replacementDepreciation12M = Math.round(vehicle.currentValue * 0.155);
 
-  let decision: KeepSellDecision = 'KEEP';
+  // 2. Replacement financing: year-1 front-loaded interest on 70% LTV loan
+  const replacementPrincipal = Math.round(vehicle.currentValue * 0.7);
+  const replacementLoanInfo = calculateNext12MonthsLoanInterest(
+    replacementPrincipal,
+    loanInterestRatePercent,
+    loanTenureYears,
+    0 // Year 1 starting at month 0
+  );
+  const replacementInterest12M = replacementLoanInfo.interestNext12M;
+
+  // 3. Replacement maintenance (lower in year 1 under manufacturer warranty ~65% of mature baseline)
+  const replacementMaintenance12M = Math.round(annualMaintenance * 0.65);
+
+  // 4. Replacement insurance (brand new comprehensive zero-dep is ~1.12x of current IDV premium)
+  const replacementInsurance12M = Math.round(annualInsurance * 1.12);
+
+  // 5. Replacement fuel (identical usage pattern)
+  const replacementFuel12M = annualFuelCost;
+
+  // Total 12-month replacement cost including transaction exit friction
+  const costToSellReplace12M = 
+    transactionCost + 
+    replacementDepreciation12M + 
+    replacementInterest12M + 
+    replacementMaintenance12M + 
+    replacementInsurance12M + 
+    replacementFuel12M;
+
+  // Like-for-like comparison difference:
+  const breakEvenDifference = Math.abs(costToKeep12M - costToSellReplace12M);
+
+  // ABSOLUTE INVARIANT: Verdict is strictly derived from like-for-like 12-month total cost comparison
+  const decision: KeepSellDecision = costToKeep12M <= costToSellReplace12M ? 'KEEP' : 'SELL';
+
+  // Break-even horizon estimation in months
+  let breakEvenMonths = 12;
+  if (decision === 'KEEP') {
+    breakEvenMonths = Math.min(36, Math.max(8, Math.round((costToSellReplace12M / Math.max(1, costToKeep12M)) * 12)));
+  } else {
+    breakEvenMonths = Math.max(1, Math.min(6, Math.round((transactionCost / Math.max(1, breakEvenDifference)) * 12)));
+  }
+  const breakEvenDate = new Date();
+  breakEvenDate.setMonth(breakEvenDate.getMonth() + breakEvenMonths);
+  const breakEvenHorizon = breakEvenDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+
   let headlineReason = '';
   let detailedReason = '';
 
-  // Decision logic rooted in actual numbers:
-  // If holding cost for 12 months is significantly lower than replacing and resale loss has stabilized -> KEEP
-  // If upcoming depreciation + maintenance is burning an excessively high fraction (> 16%) of current value -> SELL
-  const holdingBurnRatio = (depreciation12M + maintenance12M) / Math.max(1, vehicle.currentValue);
-
-  if (holdingBurnRatio <= 0.14) {
-    decision = 'KEEP';
-    headlineReason = `Keeping the car for another 12 months costs ₹${(costToKeep12M / 100000).toFixed(1)}L, whereas selling now exposes you to ₹${(costToSellNow / 100000).toFixed(1)}L in replacement and transaction friction.`;
-    detailedReason = `Your ${vehicle.make} ${vehicle.model}'s depreciation curve has stabilized at ~${(nextYearDepRate * 100).toFixed(1)}%/yr. Selling prematurely resets you into a steep year-1 depreciation cycle on a replacement car.`;
+  if (decision === 'KEEP') {
+    headlineReason = `Keeping is estimated to cost ₹${(breakEvenDifference / 100000).toFixed(1)}L less over the next 12 months.`;
+    detailedReason = `Your ${vehicle.make} ${vehicle.model} has stabilized its depreciation curve (~${(nextYearDepRate * 100).toFixed(1)}%/yr). Selling prematurely triggers ₹${(transactionCost / 100000).toFixed(1)}L in transaction friction and ₹${(replacementDepreciation12M / 100000).toFixed(1)}L in year-1 replacement vehicle depreciation.`;
   } else {
-    decision = 'SELL';
-    headlineReason = `Selling now limits your ₹${(depreciation12M / 100000).toFixed(1)}L upcoming value loss and ₹${(maintenance12M / 100000).toFixed(1)}L scheduled service cliff.`;
-    detailedReason = `Expected 12-month capital loss (₹${(costToKeep12M / 100000).toFixed(1)}L) represents ${(holdingBurnRatio * 100).toFixed(1)}% of residual market value. Exit now to capture peak pre-owned market liquidity.`;
+    headlineReason = `Selling is estimated to save ₹${(breakEvenDifference / 100000).toFixed(1)}L over the next 12 months.`;
+    detailedReason = `Upcoming maintenance cliff (₹${(maintenance12M / 100000).toFixed(1)}L) and depreciation loss exceed replacement economics. Selling today locks in ₹${(sellTodayValue / 100000).toFixed(1)}L in residual market value before steeper valuation cuts.`;
   }
 
   return {
@@ -374,13 +502,23 @@ export function calculateKeepSell(
     insurance12M,
     fuel12M,
     loanInterest12M,
-    costToSellNow,
+    costToSellNow: costToSellReplace12M,
+    costToSellReplace12M,
+    sellTodayValue,
     currentNetResale,
-    replacementCost12M,
+    expectedValueAfterOneYear,
+    transactionCost,
+    replacementCost12M: costToSellReplace12M,
+    replacementDepreciation12M,
+    replacementInterest12M,
+    replacementMaintenance12M,
+    replacementInsurance12M,
+    breakEvenDifference,
+    breakEvenMonths,
+    breakEvenHorizon,
     decision,
     headlineReason,
     detailedReason,
-    breakEvenDifference,
   };
 }
 
@@ -531,7 +669,9 @@ export function calculateTrueCost(
     annualMaintenance,
     annualInsurance,
     annualFuelCost,
-    loan
+    loan,
+    finance.interestRate,
+    finance.loanTenureYears
   );
 
   // 13. Financial Affordability Fit
@@ -583,7 +723,7 @@ export function calculateTrueCost(
     fiveYearInterestTotal: loan.interestPaidDuringOwnership,
     yearlyCumulativeTCO,
 
-    nextYearValue: keepSellDetails.currentNetResale,
+    nextYearValue: keepSellDetails.expectedValueAfterOneYear,
     nextYearDepreciation: keepSellDetails.depreciation12M,
     nextYearMaintenance: keepSellDetails.maintenance12M,
     nextYearKeepingCost: keepSellDetails.costToKeep12M,

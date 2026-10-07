@@ -105,12 +105,22 @@ export interface KeepSellAnalysis {
   fuel12M: number;
   loanInterest12M: number;
   costToSellNow: number;
+  costToSellReplace12M: number;
+  sellTodayValue: number;
   currentNetResale: number;
+  expectedValueAfterOneYear: number;
+  transactionCost: number;
   replacementCost12M: number;
+  replacementDepreciation12M: number;
+  replacementInterest12M: number;
+  replacementMaintenance12M: number;
+  replacementInsurance12M: number;
+  breakEvenDifference: number; // Difference in INR
+  breakEvenMonths: number;
+  breakEvenHorizon: string;
   decision: KeepSellDecision;
   headlineReason: string;
   detailedReason: string;
-  breakEvenDifference: number; // Difference in INR
 }
 
 export interface LoanAmortization {

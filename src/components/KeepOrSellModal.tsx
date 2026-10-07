@@ -62,77 +62,155 @@ export const KeepOrSellModal: React.FC<KeepOrSellModalProps> = ({
           </div>
 
           {/* 2. WHY? COMPACT BREAKDOWN */}
-          <div className="p-4 rounded-2xl bg-[#121620] border border-white/8 space-y-2.5">
-            <span className="text-[10px] font-bold text-[#CCFF00] uppercase tracking-wider block">
-              WHY?
-            </span>
+          <div className="p-4 rounded-2xl bg-[#121620] border border-white/8 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-[#CCFF00] uppercase tracking-wider block">
+                12-MONTH LIKE-FOR-LIKE COMPARISON
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-white/10 text-zinc-300 font-mono-numbers">
+                Break-even: {details.breakEvenHorizon}
+              </span>
+            </div>
 
-            <div className="space-y-2 text-xs">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className={`p-2.5 rounded-xl border ${
+                isKeep ? 'bg-[#CCFF00]/10 border-[#CCFF00]/30' : 'bg-black/30 border-white/5'
+              }`}>
+                <span className="text-[10px] text-zinc-400 block font-medium">Keep 12M Cost</span>
+                <span className={`text-base font-black font-mono-numbers ${
+                  isKeep ? 'text-[#CCFF00]' : 'text-zinc-300'
+                }`}>
+                  {formatINR(details.costToKeep12M)}
+                </span>
+                <span className="text-[9px] text-zinc-400 block mt-0.5">Depr + Maint + Loan</span>
+              </div>
+
+              <div className={`p-2.5 rounded-xl border ${
+                !isKeep ? 'bg-amber-400/10 border-amber-400/30' : 'bg-black/30 border-white/5'
+              }`}>
+                <span className="text-[10px] text-zinc-400 block font-medium">Sell & Replace 12M</span>
+                <span className={`text-base font-black font-mono-numbers ${
+                  !isKeep ? 'text-amber-400' : 'text-zinc-300'
+                }`}>
+                  {formatINR(details.costToSellReplace12M)}
+                </span>
+                <span className="text-[9px] text-zinc-400 block mt-0.5">Friction + New Depr</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs pt-1 border-t border-white/5">
               <div className="flex justify-between items-center text-zinc-300">
-                <span>Expected value in 12 months:</span>
+                <span>Sell Today Market Value:</span>
                 <span className="font-bold font-mono-numbers text-white">
-                  {formatINR(vehicle.currentValue - details.depreciation12M)}
+                  {formatINR(details.sellTodayValue)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center text-zinc-300">
-                <span>Expected depreciation:</span>
+                <span>Expected Value After 1 Year:</span>
+                <span className="font-bold font-mono-numbers text-white">
+                  {formatINR(details.expectedValueAfterOneYear)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center text-zinc-300">
+                <span>12M Depreciation Loss:</span>
                 <span className="font-bold font-mono-numbers text-rose-400">
-                  {formatINR(details.depreciation12M)}
+                  -{formatINR(details.depreciation12M)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center text-zinc-300">
-                <span>Expected maintenance:</span>
-                <span className="font-bold font-mono-numbers text-blue-400">
-                  {formatINR(details.maintenance12M)}
+                <span>12M Financing Interest Impact:</span>
+                <span className="font-bold font-mono-numbers text-amber-300">
+                  {details.loanInterest12M > 0 ? formatINR(details.loanInterest12M) : '₹0 (Paid / Cash)'}
                 </span>
               </div>
 
               <div className="pt-2 border-t border-white/10 flex justify-between items-center font-bold text-white">
-                <span>Cost of keeping:</span>
-                <span className="text-[#CCFF00] font-mono-numbers">
-                  {formatINR(details.costToKeep12M)}
+                <span>Net 12-Month Financial Advantage:</span>
+                <span className="text-[#CCFF00] font-mono-numbers text-sm">
+                  {formatINR(details.breakEvenDifference)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 3. ONE SENTENCE SUMMARY */}
-          <p className="text-xs sm:text-sm text-zinc-300 leading-snug px-1">
-            {isKeep
-              ? `Keeping your ${vehicle.model} for another year looks financially better than absorbing premature replacement and transaction friction.`
-              : `Selling now is estimated to save you ${formatINR(details.breakEvenDifference)} over the next 12 months by avoiding upcoming steep depreciation.`}
-          </p>
+          {/* 3. ONE SENTENCE SUMMARY (NEVER CONTRADICTS) */}
+          <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+            <p className="text-xs sm:text-sm text-zinc-200 leading-snug">
+              {details.headlineReason}
+            </p>
+          </div>
 
           {/* 4. PRIMARY CTA: SEE THE NUMBERS */}
           <button
             onClick={() => setShowDetailedNumbers(!showDetailedNumbers)}
             className="w-full py-3.5 rounded-2xl bg-[#CCFF00] text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-[#CCFF00]/15 hover:bg-[#b8e600] transition-colors flex items-center justify-center gap-1.5 cursor-pointer min-h-[48px]"
           >
-            <span>{showDetailedNumbers ? 'Hide Numbers' : 'See The Numbers'}</span>
+            <span>{showDetailedNumbers ? 'Hide Detailed Breakdown' : 'See Detailed Breakdown'}</span>
             {showDetailedNumbers ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {/* 5. EXPANDABLE DETAILED NUMBERS (BELOW THE FOLD) */}
           {showDetailedNumbers && (
-            <div className="p-4 rounded-2xl bg-black/40 border border-white/8 space-y-2.5 text-xs animate-in fade-in">
-              <div className="flex justify-between text-zinc-300">
-                <span>Current Market Value:</span>
-                <span className="font-bold font-mono-numbers text-white">{formatINR(vehicle.currentValue)}</span>
+            <div className="p-4 rounded-2xl bg-black/40 border border-white/8 space-y-3 text-xs animate-in fade-in">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                Itemized 12-Month Like-For-Like Breakdown
+              </span>
+
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-zinc-300 block">Cost to KEEP {vehicle.model}:</span>
+                <div className="pl-2 space-y-1 text-zinc-400 border-l border-white/10">
+                  <div className="flex justify-between">
+                    <span>12M Value Depreciation:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.depreciation12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Maintenance & Ageing Cliff:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.maintenance12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Insurance (IDV Amortized):</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.insurance12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Fuel Consumption:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.fuel12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Financing Interest:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.loanInterest12M)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between text-zinc-300">
-                <span>Annual Fuel Estimate:</span>
-                <span className="font-bold font-mono-numbers text-white">{formatINR(details.fuel12M)}</span>
+
+              <div className="space-y-1.5 pt-2 border-t border-white/5">
+                <span className="text-[11px] font-bold text-zinc-300 block">Cost to SELL & REPLACE:</span>
+                <div className="pl-2 space-y-1 text-zinc-400 border-l border-white/10">
+                  <div className="flex justify-between">
+                    <span>Sale Broker & Transaction (3.5%):</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.transactionCost)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Replacement Vehicle Year-1 Depr:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.replacementDepreciation12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Replacement Loan Year-1 Interest:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.replacementInterest12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Replacement Year-1 Maintenance:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.replacementMaintenance12M)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Replacement Zero-Dep Insurance:</span>
+                    <span className="font-mono-numbers text-zinc-200">{formatINR(details.replacementInsurance12M)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between text-zinc-300">
-                <span>Annual Insurance (IDV):</span>
-                <span className="font-bold font-mono-numbers text-white">{formatINR(details.insurance12M)}</span>
-              </div>
-              <div className="flex justify-between text-zinc-300">
-                <span>Transaction & Broker Margin (3.5%):</span>
-                <span className="font-bold font-mono-numbers text-zinc-400">{formatINR(Math.round(vehicle.currentValue * 0.035))}</span>
-              </div>
+
               <div className="pt-2 border-t border-white/5 text-[11px] text-zinc-400 leading-relaxed">
                 {details.detailedReason}
               </div>

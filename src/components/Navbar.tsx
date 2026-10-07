@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenKeepSell,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#08090C]/90 backdrop-blur-xl border-b border-white/8 transition-all">
+    <header className="sticky top-0 z-40 w-full bg-[#08090C]/90 backdrop-blur-xl border-b border-white/8 transition-all pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-md md:max-w-xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
         {/* Brand / Logo */}
         <button

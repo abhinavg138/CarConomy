@@ -26,6 +26,10 @@ import { MoreMenuView } from './components/MoreMenuView';
 import { DriverProfilesCard } from './components/DriverProfilesCard';
 import { LandingPage } from './components/LandingPage';
 import { ArrowLeft } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 export default function App() {
   // 1. Primary Bottom Navigation Tabs: HOME | MY_CAR | BUY | COMPARE | MORE
@@ -105,6 +109,39 @@ export default function App() {
       console.warn('LocalStorage save failed:', e);
     }
   }, [vehicles, activeVehicleId, drivers, financialProfile, ownershipProfile]);
+
+  // Android Native Platform Lifecycle & Hardware Back Button Handling
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: '#08090C' }).catch(() => {});
+    SplashScreen.hide().catch(() => {});
+
+    const backListener = CapApp.addListener('backButton', () => {
+      if (isKeepSellModalOpen) {
+        setIsKeepSellModalOpen(false);
+        return;
+      }
+      if (isAddCarModalOpen) {
+        setIsAddCarModalOpen(false);
+        return;
+      }
+      if (isSubTab) {
+        setActiveTab(activeTab === 'BUY' ? 'HOME' : 'MORE');
+        return;
+      }
+      if (activeTab !== 'HOME') {
+        setActiveTab('HOME');
+        return;
+      }
+      CapApp.exitApp();
+    });
+
+    return () => {
+      backListener.then((sub) => sub.remove()).catch(() => {});
+    };
+  }, [isKeepSellModalOpen, isAddCarModalOpen, isSubTab, activeTab]);
 
   const activeVehicle = vehicles.find((v) => v.id === activeVehicleId) || vehicles[0];
 

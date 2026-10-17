@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Car as CarIcon, AlertCircle } from 'lucide-react';
 import { Vehicle } from '../types';
+import { getVehicleImage } from '../utils/vehicleImages';
 
 interface CarImageProps {
   vehicle: Vehicle;
@@ -28,11 +29,8 @@ export const CarImage: React.FC<CarImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Resolve image from structured vehicle images or fallback hero image
-  const resolvedSrc = 
-    vehicle.images?.[angle] || 
-    vehicle.images?.hero || 
-    vehicle.image;
+  // Resolve image from single vehicle image registry or structured vehicle images
+  const resolvedSrc = getVehicleImage(vehicle, angle) || vehicle.images?.[angle] || vehicle.image;
 
   const altText = alt || `${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.variant || ''}`;
 

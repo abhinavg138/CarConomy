@@ -12,6 +12,7 @@ import {
 import { Vehicle, Driver, FinancialProfile, OwnershipProfile } from '../types';
 import { calculateTrueCost } from '../utils/calculator';
 import { formatINR } from '../utils/formatters';
+import { CarImage } from './CarImage';
 
 interface BuyCarWizardProps {
   vehicles: Vehicle[];
@@ -165,7 +166,7 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
                 }`}
               >
                 <div className="h-16 w-full rounded-xl overflow-hidden bg-zinc-900 mb-1.5">
-                  <img src={car.image} alt={car.model} className="w-full h-full object-cover" loading="lazy" />
+                  <CarImage vehicle={car} className="w-full h-full" fit="cover" />
                 </div>
                 <h4 className="text-xs font-bold text-white truncate leading-tight">
                   {car.make} {car.model}

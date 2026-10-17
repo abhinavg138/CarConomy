@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Vehicle } from '../types';
+import { getVehicleImage } from '../utils/vehicleImages';
 
 export const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ');
 
 export const Eyebrow: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
   <p className={cx('text-xs font-medium uppercase tracking-[0.14em] text-mute', className)}>{children}</p>
 );
-export const H1: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h1 className="font-display text-4xl sm:text-5xl leading-[1.05] tracking-tight">{children}</h1>
+export const H1: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <h1 className={cx('font-display text-4xl sm:text-5xl leading-[1.05] tracking-tight', className)}>{children}</h1>
 );
 export const Big: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
   <span className={cx('font-display num leading-none tracking-tight', className)}>{children}</span>
@@ -60,9 +61,9 @@ const loadedImageCache = new Set<string>();
 
 /** Honest vehicle image: exact angle only, no cross-angle substitution; fallback names the car. */
 export const VehicleImage: React.FC<{ vehicle: Vehicle; angle?: 'hero' | 'front' | 'rear' | 'side' | 'interior'; priority?: boolean; className?: string }> = ({ vehicle, angle = 'hero', priority, className }) => {
-  const src = angle === 'hero' ? (vehicle.images?.hero || vehicle.image) : vehicle.images?.[angle];
+  const src = getVehicleImage(vehicle, angle);
   const isCached = !!src && loadedImageCache.has(src);
-  const [state, setState] = useState<{ src?: string; ok: boolean; err: boolean }>({ src, ok: isCached, err: false });
+  const [state, setState] = useState<{ src?: string | null; ok: boolean; err: boolean }>({ src, ok: isCached, err: false });
   
   const isCurrent = state.src === src;
   const isOk = isCurrent ? state.ok : isCached;

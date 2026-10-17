@@ -9,7 +9,8 @@ import {
   LoanAmortization,
   IndividualDriverImpact,
   KeepSellAnalysis,
-  EnergyType
+  EnergyType,
+  YearlyFinancialBreakdown
 } from '../types';
 
 /**
@@ -106,6 +107,7 @@ export function calculateLoan(
 export function getVehicleEnergyType(vehicle: Vehicle): EnergyType {
   if (vehicle.energyType) return vehicle.energyType;
   if (vehicle.fuelType === 'EV') return 'ELECTRIC';
+  if (vehicle.fuelType === 'CNG') return 'CNG';
   if (vehicle.fuelType === 'Diesel') return 'DIESEL';
   if (vehicle.fuelType === 'Hybrid') return 'HYBRID';
   return 'PETROL';
@@ -635,10 +637,10 @@ export function calculateTrueCost(
   const energyCostPerKm = Number((annualFuelCost / Math.max(1, annualKm)).toFixed(2));
 
   // Formatted energy display indicators
-  const energyMetricLabel = isEV ? 'Energy' : (energyType === 'CNG' ? 'CNG' : 'Fuel');
+  const energyMetricLabel = isEV ? 'Energy' : (energyType === 'CNG' ? 'CNG' : (energyType === 'HYBRID' ? 'Hybrid (Petrol)' : 'Fuel'));
   const energyEfficiencyDisplay = isEV
     ? `${(100 / Math.max(0.1, effectiveMileage)).toFixed(1)} kWh/100 km (${effectiveMileage.toFixed(1)} km/kWh)`
-    : (energyType === 'CNG' ? `${effectiveMileage.toFixed(1)} km/kg` : `${effectiveMileage.toFixed(1)} km/L`);
+    : (energyType === 'CNG' ? `${effectiveMileage.toFixed(1)} km/kg` : (energyType === 'HYBRID' ? `${effectiveMileage.toFixed(1)} km/L (Strong Hybrid)` : `${effectiveMileage.toFixed(1)} km/L`));
   const energyTariffDisplay = isEV
     ? `₹${elecPrice.toFixed(2)}/kWh`
     : (energyType === 'CNG' ? `₹${cngPrice.toFixed(2)}/kg` : `₹${ownership.fuelPrice.toFixed(2)}/L`);
@@ -1072,7 +1074,7 @@ export function evaluateJudgeProfileRecommendation(
   const isCorporate = !!finance.isCorporateLease || !!finance.isBusinessDepreciationClaimed;
 
   const rankedCars: VehicleMatchRank[] = allVehicles.map(v => {
-    const eco = calculateTrueCost(v, drivers, ownership, finance, 'TARGET_BUY');
+    const eco = calculateTrueCost(v, drivers, ownership, finance, 'BUYING_CAR');
     const tax = calculateTaxTactics(v, finance, eco);
     let score = 50;
     const reasons: string[] = [];

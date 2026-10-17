@@ -1,4 +1,4 @@
-export type FuelType = 'Petrol' | 'Diesel' | 'Hybrid' | 'EV';
+export type FuelType = 'Petrol' | 'Diesel' | 'Hybrid' | 'EV' | 'CNG';
 
 export type EnergyType = 'PETROL' | 'DIESEL' | 'CNG' | 'ELECTRIC' | 'HYBRID';
 
@@ -29,8 +29,9 @@ export interface Vehicle {
   generation?: string;
   fuelType: FuelType;
   energyType?: EnergyType;
-  energyConsumptionKwhPer100Km?: number; // e.g. 17.2 for BMW i4
-  batteryCapacityKwh?: number; // e.g. 83.9 for BMW i4
+  isCustom?: boolean;
+  energyConsumptionKwhPer100Km?: number; // e.g. 13.5 for Punch EV
+  batteryCapacityKwh?: number; // e.g. 35.0 for Punch EV
   purchasePrice: number; // in INR
   currentValue: number; // in INR (for current car)
   expectedMileage: number; // km/L for ICE/Hybrid, or km/kWh for EV

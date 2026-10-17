@@ -2,7 +2,8 @@
  * Unit verification & regression test suite for Carconomy calculation engine
  * Tests: EMI calculation, Loan Amortization, True Cost consistency,
  * Keep vs Sell regression scenarios (KEEP cheaper, SELL cheaper, equal, financed, fully paid),
- * Driver Impact, and Financial Profile narrative calibration.
+ * Driver Impact, Mainstream Segment calibration, EV kWh/100km, CNG km/kg,
+ * Custom vehicle creation, and Comparative fairness invariants.
  */
 import { 
   calculateEMI, 
@@ -12,6 +13,7 @@ import {
   calculateTrueCost,
   calculateDriverImpact,
   calculateKeepSell,
+  calculateComparison,
   calculateNext12MonthsLoanInterest
 } from './calculator';
 import { Vehicle, Driver, OwnershipProfile, FinancialProfile } from '../types';
@@ -41,48 +43,49 @@ export function runEngineTests(): { success: boolean; results: string[] } {
   // 4. Depreciation Mode Separation:
   const testCar: Vehicle = {
     id: 'test-car',
-    make: 'BMW',
-    model: '3 Series',
-    variant: '330i',
+    make: 'Tata',
+    model: 'Nexon',
+    variant: 'Fearless+ DCA',
     year: 2025,
     fuelType: 'Petrol',
-    purchasePrice: 5500000,
-    currentValue: 4180000,
-    expectedMileage: 13.8,
-    maintenanceEstimate: 42000,
-    insuranceEstimate: 41000,
-    depreciationRate: 0.11,
+    purchasePrice: 1450000,
+    currentValue: 1250000,
+    expectedMileage: 16.5,
+    maintenanceEstimate: 12500,
+    insuranceEstimate: 18000,
+    depreciationRate: 0.09,
+    firstYearDepreciationRate: 0.16,
     image: '',
-    odometerKm: 18420,
-    purchaseDate: '2025-08-12',
+    odometerKm: 14200,
+    purchaseDate: '2024-07-28',
     specs: {
-      engine: '2.0L Turbo',
-      power: '258 hp',
-      torque: '400 Nm',
-      transmission: '8-Speed AT',
-      zeroToHundred: '5.8s',
-      fuelTankLiters: 59,
+      engine: '1.2L Turbo',
+      power: '120 hp',
+      torque: '170 Nm',
+      transmission: '7-Speed DCA',
+      zeroToHundred: '10.4s',
+      fuelTankLiters: 44,
       warrantyYears: 3,
     },
   };
 
   const depBuying = calculateDepreciation(testCar, 5, 'BUYING_CAR');
   const depCurrent = calculateDepreciation(testCar, 5, 'CURRENT_CAR');
-  const depModeCorrect = depBuying.yearlyValues[0] < 5500000 && depCurrent.yearlyValues[0] < 4180000;
-  results.push(`Test 4 (calculateDepreciation modes): Buying starts from ₹55L, Current from ₹41.8L [${depModeCorrect ? 'PASS' : 'FAIL'}]`);
+  const depModeCorrect = depBuying.yearlyValues[0] < 1450000 && depCurrent.yearlyValues[0] < 1250000;
+  results.push(`Test 4 (calculateDepreciation modes): Buying starts from ₹14.5L, Current from ₹12.5L [${depModeCorrect ? 'PASS' : 'FAIL'}]`);
 
   // 5. Driver Impact test: Aggressive driver increases wear
   const drivers: Driver[] = [
     { id: 'd1', name: 'You', role: 'Me', dailyKm: 30, cityHighwaySplit: 70, drivingStyle: 'MODERATE' },
     { id: 'd2', name: 'Son', role: 'Children', dailyKm: 20, cityHighwaySplit: 50, drivingStyle: 'AGGRESSIVE' },
   ];
-  const driverImpact = calculateDriverImpact(drivers, 13.8, 100, 'NCR / Delhi');
+  const driverImpact = calculateDriverImpact(drivers, 16.5, 96.72, 'NCR / Delhi');
   const driverWearCorrect = driverImpact.additionalWearAnnual > 0 && driverImpact.aggressiveCount === 1;
   results.push(`Test 5 (calculateDriverImpact): Household wear reflects aggressive driver (+₹${driverImpact.additionalWearAnnual.toLocaleString()}) [${driverWearCorrect ? 'PASS' : 'FAIL'}]`);
 
   // 6. Keep/Sell: KEEP cheaper scenario (Healthy car, passed initial steep depreciation)
-  const dummyLoan = calculateLoan(testCar.purchasePrice, 1500000, 8.85, 5, 5);
-  const keepCheaperRes = calculateKeepSell(testCar, 42000, 41000, 105000, dummyLoan, 8.85, 5);
+  const dummyLoan = calculateLoan(testCar.purchasePrice, 300000, 8.75, 5, 5);
+  const keepCheaperRes = calculateKeepSell(testCar, 12500, 18000, 65000, dummyLoan, 8.75, 5);
   const keepCheaperPass = keepCheaperRes.decision === 'KEEP' && 
                           keepCheaperRes.costToKeep12M <= keepCheaperRes.costToSellReplace12M &&
                           keepCheaperRes.headlineReason.includes('Keeping is estimated to cost');
@@ -91,15 +94,15 @@ export function runEngineTests(): { success: boolean; results: string[] } {
   // 7. Keep/Sell: SELL cheaper scenario (Aged luxury car with impending heavy service cliff and high depreciation)
   const agingCar: Vehicle = {
     ...testCar,
-    currentValue: 1800000,
-    year: 2019,
-    purchaseDate: '2019-03-01',
-    odometerKm: 92000,
-    depreciationRate: 0.28,
-    maintenanceEstimate: 220000,
-    insuranceEstimate: 52000,
+    currentValue: 600000,
+    year: 2017,
+    purchaseDate: '2017-03-01',
+    odometerKm: 110000,
+    depreciationRate: 0.25,
+    maintenanceEstimate: 95000,
+    insuranceEstimate: 22000,
   };
-  const sellCheaperRes = calculateKeepSell(agingCar, 220000, 52000, 150000, dummyLoan, 8.85, 5);
+  const sellCheaperRes = calculateKeepSell(agingCar, 95000, 22000, 80000, dummyLoan, 8.75, 5);
   const sellCheaperPass = sellCheaperRes.decision === 'SELL' && 
                           sellCheaperRes.costToKeep12M > sellCheaperRes.costToSellReplace12M &&
                           sellCheaperRes.headlineReason.includes('Selling is estimated to save');
@@ -111,48 +114,48 @@ export function runEngineTests(): { success: boolean; results: string[] } {
   results.push(`Test 7b (Keep/Sell: Strict Invariant No-Contradiction): [${invariantPass ? 'PASS' : 'FAIL'}]`);
 
   // 8. Keep/Sell: Financed vs Fully Paid test
-  // Financed: 1 year into a 5-year loan -> interest must be positive
-  const financedInterest = calculateNext12MonthsLoanInterest(4000000, 8.85, 5, 12);
+  const financedInterest = calculateNext12MonthsLoanInterest(800000, 8.75, 5, 12);
   const financedPass = financedInterest.interestNext12M > 0 && financedInterest.remainingPrincipalNow > 0;
   results.push(`Test 8 (Loan: Financed at 1yr): Next 12M interest ₹${financedInterest.interestNext12M.toLocaleString()}, balance ₹${financedInterest.remainingPrincipalNow.toLocaleString()} [${financedPass ? 'PASS' : 'FAIL'}]`);
 
   // Fully Paid: 65 months into a 5-year loan (60 months) -> interest must be 0
-  const paidInterest = calculateNext12MonthsLoanInterest(4000000, 8.85, 5, 65);
+  const paidInterest = calculateNext12MonthsLoanInterest(800000, 8.75, 5, 65);
   const paidPass = paidInterest.interestNext12M === 0 && paidInterest.remainingPrincipalNow === 0;
   results.push(`Test 9 (Loan: Fully paid at 65mo): Interest ₹${paidInterest.interestNext12M}, balance ₹${paidInterest.remainingPrincipalNow} [${paidPass ? 'PASS' : 'FAIL'}]`);
 
-  // 9. Demo Profile Narrative Test: BMW Stretched, Creta Comfortable
-  const bmw = INITIAL_VEHICLES.find(v => v.id === 'bmw-3-series') || INITIAL_VEHICLES[0];
-  const creta = INITIAL_VEHICLES.find(v => v.id === 'hyundai-creta') || INITIAL_VEHICLES[3];
+  // 10. Mainstream Profile Calibration: WagonR (₹6.8L) is COMFORTABLE, BMW 3 Series (₹55L) is AGGRESSIVE/UNSUSTAINABLE
+  const wagonr = INITIAL_VEHICLES.find(v => v.id === 'maruti-wagonr') || INITIAL_VEHICLES[5];
+  const bmw = INITIAL_VEHICLES.find(v => v.id === 'bmw-3-series') || INITIAL_VEHICLES[INITIAL_VEHICLES.length - 5];
   
+  const wagonrEco = calculateTrueCost(wagonr, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
   const bmwEco = calculateTrueCost(bmw, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
-  const cretaEco = calculateTrueCost(creta, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
 
-  // 10. Demo Profile Narrative Test: BMW Stretched, Creta Comfortable
-  const demoNarrativePass = bmwEco.financialFitTier === 'STRETCHED' && cretaEco.financialFitTier === 'COMFORTABLE';
-  results.push(`Test 10 (Demo Profile Narrative): BMW 3 Series is ${bmwEco.financialFitTier} (${bmwEco.incomeAllocationPercent}%), Creta is ${cretaEco.financialFitTier} (${cretaEco.incomeAllocationPercent}%) [${demoNarrativePass ? 'PASS' : 'FAIL'}]`);
+  const profileNarrativePass = wagonrEco.financialFitTier === 'COMFORTABLE' && bmwEco.financialFitTier === 'AGGRESSIVE';
+  results.push(`Test 10 (Mainstream Profile Calibration): WagonR ₹6.8L is ${wagonrEco.financialFitTier} (${wagonrEco.incomeAllocationPercent}%), BMW 3 Series is ${bmwEco.financialFitTier} (${bmwEco.incomeAllocationPercent}%) [${profileNarrativePass ? 'PASS' : 'FAIL'}]`);
 
   // 11. Financial Reconciliation Test: Component totals must sum up to headline 5-year total to the rupee
-  const componentSum = bmwEco.fiveYearFuelTotal + 
-                       bmwEco.fiveYearMaintenanceTotal + 
-                       bmwEco.fiveYearInsuranceTotal + 
-                       bmwEco.fiveYearDepreciationTotal + 
-                       bmwEco.fiveYearInterestTotal + 
-                       bmwEco.fiveYearRepairsTyresTotal + 
-                       bmwEco.fiveYearParkingTollsTotal;
-  const reconciliationPass = componentSum === bmwEco.fiveYearTotalCost && 
-                             bmwEco.yearlyCumulativeTCO[4] === bmwEco.fiveYearTotalCost;
-  results.push(`Test 11 (Financial Reconciliation): Components ₹${componentSum.toLocaleString()} === Headline ₹${bmwEco.fiveYearTotalCost.toLocaleString()} [${reconciliationPass ? 'PASS' : 'FAIL'}]`);
+  const nexon = INITIAL_VEHICLES[0];
+  const nexonEco = calculateTrueCost(nexon, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
+  const componentSum = nexonEco.fiveYearFuelTotal + 
+                       nexonEco.fiveYearMaintenanceTotal + 
+                       nexonEco.fiveYearInsuranceTotal + 
+                       nexonEco.fiveYearDepreciationTotal + 
+                       nexonEco.fiveYearInterestTotal + 
+                       nexonEco.fiveYearRepairsTyresTotal + 
+                       nexonEco.fiveYearParkingTollsTotal;
+  const reconciliationPass = componentSum === nexonEco.fiveYearTotalCost && 
+                             nexonEco.yearlyCumulativeTCO[4] === nexonEco.fiveYearTotalCost;
+  results.push(`Test 11 (Financial Reconciliation): Components ₹${componentSum.toLocaleString()} === Headline ₹${nexonEco.fiveYearTotalCost.toLocaleString()} [${reconciliationPass ? 'PASS' : 'FAIL'}]`);
 
-  // 12. EV Economics Test: BMW i4 must never produce km/L, must use kWh/100 km and electricity price
-  const bmwi4 = INITIAL_VEHICLES.find(v => v.id === 'bmw-i4') || INITIAL_VEHICLES[8];
-  const evEco = calculateTrueCost(bmwi4, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
+  // 12. EV Economics Test: Punch EV must never produce km/L, must use kWh/100 km and electricity price
+  const punchEv = INITIAL_VEHICLES.find(v => v.id === 'tata-punch-ev') || INITIAL_VEHICLES.find(v => v.energyType === 'ELECTRIC')!;
+  const evEco = calculateTrueCost(punchEv, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE, 'BUYING_CAR');
   const evPass = evEco.energyType === 'ELECTRIC' && 
                  !evEco.energyEfficiencyDisplay.includes('km/L') &&
                  evEco.energyEfficiencyDisplay.includes('kWh/100 km') &&
                  evEco.energyMetricLabel === 'Energy' &&
-                 evEco.annualFuelCost < 75000; // Electricity is ~₹58K for 32,850km vs ~₹2.83L for petrol
-  results.push(`Test 12 (EV Economics: BMW i4): Energy metric = ${evEco.energyEfficiencyDisplay}, Annual Energy = ₹${evEco.annualFuelCost.toLocaleString()} [${evPass ? 'PASS' : 'FAIL'}]`);
+                 evEco.annualFuelCost < 30000; // Electricity is ~₹14K for 12,000km vs ~₹75K for petrol
+  results.push(`Test 12 (EV Economics: Punch EV): Metric = ${evEco.energyEfficiencyDisplay}, Annual Energy = ₹${evEco.annualFuelCost.toLocaleString()} [${evPass ? 'PASS' : 'FAIL'}]`);
 
   // 13. Driver Daily Km Slider Test: Increasing daily km must increase annual km and total cost
   const lowKmDrivers: Driver[] = [
@@ -188,18 +191,70 @@ export function runEngineTests(): { success: boolean; results: string[] } {
                   highOdoEco.annualTotalCost > lowOdoEco.annualTotalCost;
   results.push(`Test 15 (Odometer Scaling): 15k km (Maint ₹${lowOdoEco.annualMaintenance.toLocaleString()}) vs 75k km (Maint ₹${highOdoEco.annualMaintenance.toLocaleString()}) [${odoPass ? 'PASS' : 'FAIL'}]`);
 
-  // 16. Fuel Price Slider Test: ₹100/L vs ₹115/L
-  const own100 = { ...INITIAL_OWNERSHIP_PROFILE, fuelPrice: 100 };
-  const own115 = { ...INITIAL_OWNERSHIP_PROFILE, fuelPrice: 115 };
-  const eco100 = calculateTrueCost(testCar, INITIAL_DRIVERS, own100, INITIAL_FINANCIAL_PROFILE);
-  const eco115 = calculateTrueCost(testCar, INITIAL_DRIVERS, own115, INITIAL_FINANCIAL_PROFILE);
-  const fuelPricePass = eco115.annualFuelCost > eco100.annualFuelCost;
-  results.push(`Test 16 (Fuel Price): ₹100/L (₹${eco100.annualFuelCost.toLocaleString()}) vs ₹115/L (₹${eco115.annualFuelCost.toLocaleString()}) [${fuelPricePass ? 'PASS' : 'FAIL'}]`);
+  // 16. Fuel Price Slider Test: ₹96.72/L vs ₹115/L
+  const ownBase = { ...INITIAL_OWNERSHIP_PROFILE, fuelPrice: 96.72 };
+  const ownHigh = { ...INITIAL_OWNERSHIP_PROFILE, fuelPrice: 115 };
+  const ecoBase = calculateTrueCost(testCar, INITIAL_DRIVERS, ownBase, INITIAL_FINANCIAL_PROFILE);
+  const ecoHigh = calculateTrueCost(testCar, INITIAL_DRIVERS, ownHigh, INITIAL_FINANCIAL_PROFILE);
+  const fuelPricePass = ecoHigh.annualFuelCost > ecoBase.annualFuelCost;
+  results.push(`Test 16 (Fuel Price): ₹96.72/L (₹${ecoBase.annualFuelCost.toLocaleString()}) vs ₹115/L (₹${ecoHigh.annualFuelCost.toLocaleString()}) [${fuelPricePass ? 'PASS' : 'FAIL'}]`);
+
+  // 17. CNG Economics Test: WagonR CNG must use km/kg and cngPrice
+  const wagonrCng = INITIAL_VEHICLES.find(v => v.id === 'maruti-wagonr-cng')!;
+  const cngEco = calculateTrueCost(wagonrCng, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const cngPass = cngEco.energyType === 'CNG' &&
+                  cngEco.energyMetricLabel === 'CNG' &&
+                  cngEco.energyEfficiencyDisplay.includes('km/kg') &&
+                  cngEco.annualFuelCost < 50000;
+  results.push(`Test 17 (CNG Economics: WagonR CNG): Metric = ${cngEco.energyEfficiencyDisplay}, Annual CNG = ₹${cngEco.annualFuelCost.toLocaleString()} [${cngPass ? 'PASS' : 'FAIL'}]`);
+
+  // 18. Custom Vehicle Creation & Honest Specs Test: Custom vehicle gets 'Not provided' specs, computes live TCO
+  const customCar: Vehicle = {
+    id: 'custom-user-swift-2021',
+    make: 'Maruti Suzuki',
+    model: 'Swift',
+    variant: 'VXi 1.2 MT',
+    year: 2021,
+    fuelType: 'Petrol',
+    isCustom: true,
+    purchasePrice: 620000,
+    currentValue: 490000,
+    expectedMileage: 21.0,
+    maintenanceEstimate: 7500,
+    insuranceEstimate: 10500,
+    depreciationRate: 0.08,
+    odometerKm: 38000,
+    purchaseDate: '2021-04-10',
+    image: '',
+    specs: {
+      engine: '1.2L DualJet (User Defined)',
+      power: 'Not provided',
+      torque: 'Not provided',
+      transmission: 'Manual',
+      zeroToHundred: 'Not provided',
+      fuelTankLiters: 37,
+      warrantyYears: 2,
+    },
+  };
+  const customEco = calculateTrueCost(customCar, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const customPass = customCar.isCustom === true &&
+                     customCar.specs.power === 'Not provided' &&
+                     customEco.costPerKm > 0 &&
+                     customEco.monthlyOwnershipCost > 0;
+  results.push(`Test 18 (Custom Vehicle Creation): Custom Swift cost per km = ₹${customEco.costPerKm}/km, specs honest = [${customPass ? 'PASS' : 'FAIL'}]`);
+
+  // 19. Compare Invariant Test: Comparing Nexon vs Punch EV uses identical assumptions & determines winner mathematically
+  const cmpResult = calculateComparison(nexon, punchEv, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE);
+  const cmpPass = cmpResult.winnerCar.id === (cmpResult.ecoA.fiveYearTotalCost <= cmpResult.ecoB.fiveYearTotalCost ? nexon.id : punchEv.id) &&
+                  cmpResult.savings >= 0 &&
+                  cmpResult.ecoA.annualKm === cmpResult.ecoB.annualKm;
+  results.push(`Test 19 (Comparative Invariant): ${cmpResult.winnerCar.make} ${cmpResult.winnerCar.model} wins, 5yr savings ₹${cmpResult.savings.toLocaleString()} [${cmpPass ? 'PASS' : 'FAIL'}]`);
 
   const allPassed = emiCorrect && cretaPrincipalCorrect && fuelCorrect && depModeCorrect && 
                     driverWearCorrect && keepCheaperPass && sellCheaperPass && invariantPass && 
-                    financedPass && paidPass && demoNarrativePass && reconciliationPass &&
-                    evPass && driverKmPass && stylePass && odoPass && fuelPricePass;
+                    financedPass && paidPass && profileNarrativePass && reconciliationPass &&
+                    evPass && driverKmPass && stylePass && odoPass && fuelPricePass &&
+                    cngPass && customPass && cmpPass;
 
   return {
     success: allPassed,

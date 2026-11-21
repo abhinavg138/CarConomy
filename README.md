@@ -2,6 +2,7 @@
 
 > **Know what your car really costs.** Real total cost of ownership (₹/km), depreciation curves, multi-driver wear modeling, and data-driven keep-or-sell decisions tailored for the Indian car market (₹5–25 Lakh segment).
 
+[![Deployment](https://img.shields.io/badge/Vercel-Live_Demo-black?logo=vercel&logoColor=white)](https://carconomy-iota.vercel.app)
 [![React](https://img.shields.io/badge/React-19.0.1-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0.2-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8.3.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -309,8 +310,12 @@ npm run build
 
 ### Vercel Deployment
 
-CarConomy is configured for continuous deployment on [Vercel](https://vercel.com/) via [vercel.json](vercel.json).
+CarConomy is deployed live on [Vercel](https://vercel.com/) at:
+👉 **[https://carconomy-iota.vercel.app](https://carconomy-iota.vercel.app)**
 
+Continuous deployment is configured via [vercel.json](vercel.json):
+
+* **Production URL:** `https://carconomy-iota.vercel.app`
 * **Framework Preset:** Vite
 * **Build Command:** `npm run build`
 * **Output Directory:** `dist`

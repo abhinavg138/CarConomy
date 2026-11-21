@@ -11,6 +11,7 @@ import { MyCar } from './ui/MyCar';
 import { Decide } from './ui/Decide';
 import { Services } from './ui/Services';
 import { Profile } from './ui/Profile';
+import { Browse } from './ui/Browse';
 import { CustomCarModal } from './ui/CustomCarModal';
 
 const KEY = 'carconomy_v5';
@@ -55,6 +56,15 @@ export default function App() {
   const [ownership, setOwnership] = useState<OwnershipProfile>(() => load('ownership', INITIAL_OWNERSHIP_PROFILE));
 
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false);
+  const [decideTarget, setDecideTarget] = useState<{
+    vehicleId: string;
+    variantId: string | null;
+  } | null>(null);
+
+  const handleCheckAffordability = (vehicleId: string, variantId: string | null) => {
+    setDecideTarget({ vehicleId, variantId });
+    setTab('decide');
+  };
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -159,6 +169,13 @@ export default function App() {
             onGo={setTab}
           />
         )}
+        {tab === 'browse' && (
+          <Browse
+            onGo={setTab}
+            onCheckAffordability={handleCheckAffordability}
+            onOpenAddCar={() => setIsAddCarModalOpen(true)}
+          />
+        )}
         {tab === 'decide' && (
           <Decide
             vehicle={vehicle}
@@ -168,6 +185,10 @@ export default function App() {
             ownership={ownership}
             finance={finance}
             onGo={setTab}
+            initialMode={decideTarget ? 'buy' : undefined}
+            initialTargetVehicleId={decideTarget?.vehicleId}
+            initialTargetVariantId={decideTarget?.variantId}
+            onOpenAddCar={() => setIsAddCarModalOpen(true)}
           />
         )}
         {tab === 'services' && <Services vehicle={vehicle} />}

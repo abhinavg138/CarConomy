@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Vehicle, Driver, OwnershipProfile, FinancialProfile, CalculatedEconomics } from '../types';
 import { calculateComparison, evaluateJudgeProfileRecommendation } from '../utils/calculator';
 import { formatINR, formatCostPerKm } from '../utils/formatters';
+import { getVariantsForModel, applyVariantToVehicle, getModelCoverage } from '../data/vehicleVariants';
 import { Eyebrow, H1, Big, Row, Segmented, Chip, NextStep, VehicleImage, Meter, cx } from './kit';
 import { Tab } from './Shell';
 
@@ -13,8 +14,31 @@ export const Decide: React.FC<{
   ownership: OwnershipProfile;
   finance: FinancialProfile;
   onGo: (t: Tab) => void;
-}> = ({ vehicle, vehicles, eco, drivers, ownership, finance, onGo }) => {
-  const [mode, setMode] = useState<'keep' | 'buy'>('keep');
+  initialMode?: 'keep' | 'buy';
+  initialTargetVehicleId?: string;
+  initialTargetVariantId?: string | null;
+  onOpenAddCar?: () => void;
+}> = ({
+  vehicle,
+  vehicles,
+  eco,
+  drivers,
+  ownership,
+  finance,
+  onGo,
+  initialMode,
+  initialTargetVehicleId,
+  initialTargetVariantId,
+  onOpenAddCar,
+}) => {
+  const [mode, setMode] = useState<'keep' | 'buy'>(initialMode || 'keep');
+
+  useEffect(() => {
+    if (initialMode) {
+      setMode(initialMode);
+    }
+  }, [initialMode, initialTargetVehicleId, initialTargetVariantId]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -32,7 +56,16 @@ export const Decide: React.FC<{
       {mode === 'keep' ? (
         <KeepSell eco={eco} />
       ) : (
-        <Buy vehicle={vehicle} vehicles={vehicles} drivers={drivers} ownership={ownership} finance={finance} />
+        <Buy
+          vehicle={vehicle}
+          vehicles={vehicles}
+          drivers={drivers}
+          ownership={ownership}
+          finance={finance}
+          initialTargetId={initialTargetVehicleId}
+          initialVariantId={initialTargetVariantId}
+          onOpenAddCar={onOpenAddCar}
+        />
       )}
       <NextStep label="Act" title="Explore service quotes or talk to an advisor" onClick={() => onGo('services')} />
     </div>
@@ -89,24 +122,42 @@ const Buy: React.FC<{
   drivers: Driver[];
   ownership: OwnershipProfile;
   finance: FinancialProfile;
-}> = ({ vehicle, vehicles, drivers, ownership, finance }) => {
+  initialTargetId?: string;
+  initialVariantId?: string | null;
+  onOpenAddCar?: () => void;
+}> = ({ vehicle, vehicles, drivers, ownership, finance, initialTargetId, initialVariantId, onOpenAddCar }) => {
   const others = vehicles.filter(v => v.id !== vehicle.id);
   const judgeRec = useMemo(
     () => evaluateJudgeProfileRecommendation(vehicles, finance, drivers, ownership),
     [vehicles, finance, drivers, ownership]
   );
   const defaultTargetId =
-    judgeRec.topCar && judgeRec.topCar.id !== vehicle.id
+    initialTargetId && vehicles.some(v => v.id === initialTargetId)
+      ? initialTargetId
+      : judgeRec.topCar && judgeRec.topCar.id !== vehicle.id
       ? judgeRec.topCar.id
       : others[0]?.id || vehicles[0].id;
+
   const [bId, setBId] = useState(defaultTargetId);
-  const b = others.find(v => v.id === bId) || others[0] || vehicles[0];
+  const [variantId, setVariantId] = useState<string | null>(initialVariantId ?? null);
+
+  useEffect(() => {
+    if (initialTargetId && vehicles.some(v => v.id === initialTargetId)) {
+      setBId(initialTargetId);
+      setVariantId(initialVariantId ?? null);
+    }
+  }, [initialTargetId, initialVariantId, vehicles]);
+
+  const b = vehicles.find(v => v.id === bId) || others[0] || vehicles[0];
+  const bVariants = useMemo(() => getVariantsForModel(b.id), [b.id]);
+  const activeVariant = useMemo(() => bVariants.find(v => v.variantId === variantId) ?? null, [bVariants, variantId]);
+  const effectiveB = useMemo(() => applyVariantToVehicle(b, activeVariant), [b, activeVariant]);
 
   const cmp = useMemo(
-    () => (b ? calculateComparison(vehicle, b, drivers, ownership, finance) : null),
-    [vehicle, b, drivers, ownership, finance]
+    () => (effectiveB ? calculateComparison(vehicle, effectiveB, drivers, ownership, finance) : null),
+    [vehicle, effectiveB, drivers, ownership, finance]
   );
-  if (!cmp || !b) return null;
+  if (!cmp || !effectiveB) return null;
   const { ecoA, ecoB } = cmp;
 
   // Separate purchase, running, maintenance, financing, depreciation and resale
@@ -118,7 +169,7 @@ const Buy: React.FC<{
     f: (n: number) => string;
     lowerBetter?: boolean;
   }[] = [
-    { l: 'Purchase Price', a: vehicle.purchasePrice, z: b.purchasePrice, f: formatINR, lowerBetter: true },
+    { l: 'Purchase Price', a: vehicle.purchasePrice, z: effectiveB.purchasePrice, f: formatINR, lowerBetter: true },
     {
       l: '5-Year Running (Fuel/Energy)',
       sub: `${ecoA.energyEfficiencyDisplay} vs ${ecoB.energyEfficiencyDisplay}`,
@@ -193,13 +244,22 @@ const Buy: React.FC<{
   const tone = (e: CalculatedEconomics) =>
     e.financialFitTier === 'COMFORTABLE' ? 'good' : e.financialFitTier === 'STRETCHED' ? 'warn' : 'bad';
 
+  const selectableList = vehicles.filter(v => v.id !== vehicle.id || v.id === bId);
+
   return (
     <section className="space-y-8">
       <div>
         <Eyebrow className="mb-3">Compare {vehicle.model} with</Eyebrow>
         <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap">
-          {others.map(o => (
-            <Chip key={o.id} active={o.id === b.id} onClick={() => setBId(o.id)}>
+          {selectableList.map(o => (
+            <Chip
+              key={o.id}
+              active={o.id === b.id}
+              onClick={() => {
+                setBId(o.id);
+                setVariantId(null);
+              }}
+            >
               {o.make} {o.model}
             </Chip>
           ))}
@@ -207,8 +267,8 @@ const Buy: React.FC<{
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:gap-8">
-        {[vehicle, b].map(v => (
-          <div key={v.id}>
+        {[vehicle, effectiveB].map((v, idx) => (
+          <div key={`${v.id}-${idx}`}>
             <VehicleImage vehicle={v} priority />
             <p className="mt-3 font-display text-xl sm:text-2xl">
               {v.make} {v.model}
@@ -216,8 +276,89 @@ const Buy: React.FC<{
             <p className="text-xs text-mute">
               {v.variant} · {v.year} · {v.fuelType}
             </p>
+            {idx === 1 && bVariants.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setVariantId(null)}
+                  className={cx(
+                    'px-2.5 py-1 rounded-full text-[11px] border cursor-pointer transition-colors',
+                    variantId === null
+                      ? 'bg-ink text-paper border-ink'
+                      : 'border-line text-mute hover:border-ink hover:text-ink'
+                  )}
+                >
+                  {b.variant}
+                </button>
+                {bVariants.map(vr => (
+                  <button
+                    type="button"
+                    key={vr.variantId}
+                    onClick={() => setVariantId(vr.variantId)}
+                    className={cx(
+                      'px-2.5 py-1 rounded-full text-[11px] border cursor-pointer transition-colors',
+                      variantId === vr.variantId
+                        ? 'bg-ink text-paper border-ink'
+                        : 'border-line text-mute hover:border-ink hover:text-ink'
+                    )}
+                  >
+                    {vr.label}
+                  </button>
+                ))}
+                {(() => {
+                  const coverageB = getModelCoverage(b.id);
+                  if (coverageB && coverageB.coverage === 'partial') {
+                    return (
+                      <p className="w-full text-[11px] text-mute mt-1.5" data-testid="coverage-label-decide">
+                        Showing {coverageB.listedTrims} of {coverageB.knownTrims ?? 'all'} trims. Not listed?{' '}
+                        {onOpenAddCar ? (
+                          <button
+                            type="button"
+                            onClick={onOpenAddCar}
+                            className="underline text-accent hover:text-ink cursor-pointer font-medium"
+                          >
+                            Enter your own details
+                          </button>
+                        ) : (
+                          'Enter your own details in custom car'
+                        )}
+                        .
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
           </div>
         ))}
+      </div>
+
+      {/* Affordability highlight card for target car */}
+      <div className="rounded-2xl border border-line bg-surface p-5 max-w-3xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-[11px] text-mute uppercase tracking-wider font-semibold">
+              Affordability Check · {effectiveB.make} {effectiveB.model} ({effectiveB.variant})
+            </span>
+            <p className="font-display text-2xl mt-1">
+              <span className={cx(tone(ecoB) === 'good' ? 'text-good' : tone(ecoB) === 'warn' ? 'text-accent' : 'text-bad')}>
+                {ecoB.financialFitTier}
+              </span>
+              <span className="text-mute font-normal text-base"> · </span>
+              <span className="num">{formatINR(ecoB.monthlyCarPayment)}/mo EMI</span>
+            </p>
+          </div>
+          <div className="sm:text-right">
+            <span className="text-[11px] text-mute">Income Allocation</span>
+            <p className="font-display text-xl num">{ecoB.incomeAllocationPercent.toFixed(1)}%</p>
+          </div>
+        </div>
+        {ecoB.financialFitSummary && (
+          <p className="text-xs text-mute mt-3 leading-relaxed border-t border-line pt-3">
+            {ecoB.financialFitSummary}
+          </p>
+        )}
       </div>
 
       <div className="max-w-3xl">

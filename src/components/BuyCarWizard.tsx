@@ -13,6 +13,8 @@ import { Vehicle, Driver, FinancialProfile, OwnershipProfile } from '../types';
 import { calculateTrueCost } from '../utils/calculator';
 import { formatINR } from '../utils/formatters';
 import { CarImage } from './CarImage';
+import { getVariantsForModel, getModelCoverage } from '../data/vehicleVariants';
+import { INITIAL_VEHICLES } from '../data/mockData';
 
 interface BuyCarWizardProps {
   vehicles: Vehicle[];
@@ -35,6 +37,9 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
   const [isPersonalizing, setIsPersonalizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Variant selection: null = use base catalogue entry
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+
   // Expected mileage override
   const [customMileage, setCustomMileage] = useState<number | null>(null);
 
@@ -50,10 +55,38 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
 
   const selectedCar = vehicles.find((v) => v.id === selectedCarId) || vehicles[0];
 
-  const activeExpectedMileage = Number((customMileage ?? selectedCar.expectedMileage).toFixed(1));
-  const isEV = selectedCar.fuelType === 'EV';
+  // Resolve the catalogue variants for the selected model.
+  // We look up by selectedCar.id (the base model id).
+  const modelVariants = useMemo(() => getVariantsForModel(selectedCar.id), [selectedCar.id]);
+
+  // If a variant is selected and its baseModelId differs from selectedCarId,
+  // we resolve the actual base Vehicle for that variant from INITIAL_VEHICLES
+  // (handles CNG / cross-model variant pointers like maruti-wagonr-cng).
+  const variantBaseVehicle = useMemo(() => {
+    if (!selectedVariantId) return null;
+    const v = modelVariants.find(v => v.variantId === selectedVariantId);
+    if (!v) return null;
+    if (v.baseModelId !== selectedCar.id) {
+      return INITIAL_VEHICLES.find(iv => iv.id === v.baseModelId) ?? null;
+    }
+    return null;
+  }, [selectedVariantId, modelVariants, selectedCar.id]);
+
+  // The effective base vehicle (may differ for cross-model variants like CNG)
+  const effectiveBaseVehicle = variantBaseVehicle ?? selectedCar;
+
+  // Selected variant data object (null = use base entry)
+  const selectedVariant = useMemo(() =>
+    modelVariants.find(v => v.variantId === selectedVariantId) ?? null,
+    [modelVariants, selectedVariantId]
+  );
+
+  const baseExpectedMileage = selectedVariant?.expectedMileage ?? effectiveBaseVehicle.expectedMileage;
+  const activeExpectedMileage = Number((customMileage ?? baseExpectedMileage).toFixed(1));
+  const activeFuelType = selectedVariant?.fuelType ?? effectiveBaseVehicle.fuelType;
+  const isEV = activeFuelType === 'EV';
   const mileageUnit = isEV ? 'km/kWh' : 'km/L';
-  const factoryARAI = selectedCar.expectedMileage;
+  const factoryARAI = baseExpectedMileage;
 
   // Filtered cars for quick search
   const filteredVehicles = useMemo(() => {
@@ -65,10 +98,36 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
   }, [vehicles, searchQuery]);
 
   // Construct simulated vehicle & profiles
-  const simulatedCar: Vehicle = useMemo(() => ({
-    ...selectedCar,
-    expectedMileage: activeExpectedMileage,
-  }), [selectedCar, activeExpectedMileage]);
+  // If a variant is selected, override the variant-specific financial inputs.
+  const simulatedCar: Vehicle = useMemo(() => {
+    const base = effectiveBaseVehicle;
+    if (!selectedVariant) {
+      return { ...base, expectedMileage: activeExpectedMileage };
+    }
+    const effPrice = selectedVariant.purchasePrice ?? base.purchasePrice;
+    return {
+      ...base,
+      expectedMileage: activeExpectedMileage,
+      purchasePrice: effPrice,
+      fuelType: selectedVariant.fuelType,
+      energyType: selectedVariant.energyType ?? base.energyType,
+      depreciationRate: selectedVariant.depreciationRate,
+      firstYearDepreciationRate: selectedVariant.firstYearDepreciationRate ?? base.firstYearDepreciationRate,
+      maintenanceEstimate: selectedVariant.maintenanceEstimate,
+      insuranceEstimate: selectedVariant.insuranceEstimate,
+      energyConsumptionKwhPer100Km: selectedVariant.energyConsumptionKwhPer100Km ?? base.energyConsumptionKwhPer100Km,
+      batteryCapacityKwh: selectedVariant.batteryCapacityKwh ?? base.batteryCapacityKwh,
+      // Current value estimated proportionally from base
+      currentValue: Math.round(effPrice * (base.currentValue / (base.purchasePrice || 1))),
+      specs: {
+        ...base.specs,
+        transmission: selectedVariant.transmission,
+        ...(selectedVariant.engineLabel ? { engine: selectedVariant.engineLabel } : {}),
+        ...(selectedVariant.powerLabel ? { power: selectedVariant.powerLabel } : {}),
+        ...(selectedVariant.torqueLabel ? { torque: selectedVariant.torqueLabel } : {}),
+      },
+    };
+  }, [effectiveBaseVehicle, selectedVariant, activeExpectedMileage]);
 
   // Propagate REAL household drivers (never substitute with single fake MODERATE driver)
   const totalBaseDailyKm = useMemo(() => {
@@ -124,6 +183,7 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
   const handleSelectCar = (car: Vehicle) => {
     setSelectedCarId(car.id);
     setCustomMileage(null);
+    setSelectedVariantId(null); // reset variant when switching model
     setDownPayment(Math.round(car.purchasePrice * 0.25));
   };
 
@@ -179,6 +239,67 @@ export const BuyCarWizard: React.FC<BuyCarWizardProps> = ({
           })}
         </div>
       </div>
+
+      {/* VARIANT CHIP ROW — only shown when the selected model has alternative verified trims */}
+      {modelVariants.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+            Trim / Variant
+          </span>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {/* Default chip = base catalogue entry */}
+            <button
+              onClick={() => {
+                setSelectedVariantId(null);
+                setCustomMileage(null);
+                setDownPayment(Math.round(selectedCar.purchasePrice * 0.25));
+              }}
+              className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                selectedVariantId === null
+                  ? 'bg-[#CCFF00]/15 border-[#CCFF00]/50 text-[#CCFF00]'
+                  : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+              }`}
+            >
+              {selectedCar.variant}
+              <span className="block text-[9px] font-normal text-inherit opacity-70 mt-0.5">
+                {formatINR(selectedCar.purchasePrice)}
+              </span>
+            </button>
+            {/* Alternative verified variants */}
+            {modelVariants.map((variant) => (
+              <button
+                key={variant.variantId}
+                onClick={() => {
+                  setSelectedVariantId(variant.variantId);
+                  setCustomMileage(null);
+                  setDownPayment(Math.round((variant.purchasePrice ?? effectiveBaseVehicle.purchasePrice) * 0.25));
+                }}
+                className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                  selectedVariantId === variant.variantId
+                    ? 'bg-[#CCFF00]/15 border-[#CCFF00]/50 text-[#CCFF00]'
+                    : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+                }`}
+              >
+                {variant.label}
+                <span className="block text-[9px] font-normal text-inherit opacity-70 mt-0.5">
+                  {variant.purchasePrice != null ? formatINR(variant.purchasePrice) : 'Price unverified'}
+                </span>
+              </button>
+            ))}
+          </div>
+          {(() => {
+            const cov = getModelCoverage(selectedCar.id);
+            if (cov && cov.coverage === 'partial') {
+              return (
+                <p className="text-[11px] text-zinc-400 mt-2">
+                  Showing {cov.listedTrims} of {cov.knownTrims ?? 'all'} trims. Not listed? Enter your own details in custom vehicle.
+                </p>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
 
       {/* 3. PRIMARY HERO: MONTHLY COMMITMENT & AFFORDABILITY FIT */}
       <div className="p-6 rounded-3xl bg-gradient-to-b from-[#131922] via-[#0E1219] to-[#0A0D12] border border-white/10 shadow-xl space-y-4">

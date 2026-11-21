@@ -19,6 +19,8 @@ import {
 import { Vehicle, Driver, OwnershipProfile, FinancialProfile } from '../types';
 import { INITIAL_VEHICLES, INITIAL_DRIVERS, INITIAL_OWNERSHIP_PROFILE, INITIAL_FINANCIAL_PROFILE } from '../data/mockData';
 
+import { VEHICLE_VARIANTS, MODEL_COVERAGE, getModelCoverage } from '../data/vehicleVariants';
+
 export function runEngineTests(): { success: boolean; results: string[] } {
   const results: string[] = [];
 
@@ -250,11 +252,53 @@ export function runEngineTests(): { success: boolean; results: string[] } {
                   cmpResult.ecoA.annualKm === cmpResult.ecoB.annualKm;
   results.push(`Test 19 (Comparative Invariant): ${cmpResult.winnerCar.make} ${cmpResult.winnerCar.model} wins, 5yr savings ₹${cmpResult.savings.toLocaleString()} [${cmpPass ? 'PASS' : 'FAIL'}]`);
 
+  // 20. Trim Sourcing & Dates Test: Every configuration for the 5 models has a source and verifiedOn date
+  const batch1Models = ['tata-nexon', 'tata-punch', 'maruti-swift', 'maruti-brezza', 'hyundai-creta'];
+  const baseCars = INITIAL_VEHICLES.filter(v => batch1Models.includes(v.id));
+  const baseSourced = baseCars.every(v => typeof v.source === 'string' && v.source.length > 0 && typeof v.verifiedOn === 'string' && v.verifiedOn.length > 0);
+  
+  const variants = batch1Models.flatMap(id => VEHICLE_VARIANTS[id] || []);
+  const variantsSourced = variants.every(v => typeof v.source === 'string' && v.source.length > 0 && typeof v.verifiedOn === 'string' && v.verifiedOn.length > 0);
+  const sourcingPass = baseSourced && variantsSourced && variants.length > 0;
+  results.push(`Test 20 (Trim Sourcing & Dates): 5 base + ${variants.length} variant configs sourced & dated [${sourcingPass ? 'PASS' : 'FAIL'}]`);
+
+  // 21. Honest Unknowns & No Zero/Empty Values
+  const allConfigs = [...baseCars, ...variants];
+  const noZeroOrEmpty = allConfigs.every(c => {
+    const p = c.purchasePrice;
+    const m = c.expectedMileage;
+    const validPrice = p === null || (typeof p === 'number' && p > 0);
+    const validMileage = m === null || (typeof m === 'number' && m > 0);
+    return validPrice && validMileage;
+  });
+  results.push(`Test 21 (Honest Unknowns & No Zero/Empty Values): [${noZeroOrEmpty ? 'PASS' : 'FAIL'}]`);
+
+  // 22. Coverage Integrity: complete only when listedTrims === knownTrims
+  const coveragePass = batch1Models.every(id => {
+    const cov = MODEL_COVERAGE[id];
+    if (!cov) return false;
+    if (cov.coverage === 'complete') {
+      return cov.listedTrims === cov.knownTrims && cov.knownTrims !== null;
+    } else if (cov.coverage === 'partial') {
+      return cov.knownTrims === null || cov.listedTrims < cov.knownTrims;
+    }
+    return false;
+  });
+  results.push(`Test 22 (Coverage Integrity Rule): [${coveragePass ? 'PASS' : 'FAIL'}]`);
+
+  // 23. Coverage label metadata available for all partial models in Batch 1
+  const labelPass = batch1Models.every(id => {
+    const cov = getModelCoverage(id);
+    return cov && cov.coverage === 'partial' && cov.listedTrims > 0;
+  });
+  results.push(`Test 23 (Coverage Metadata for UI): [${labelPass ? 'PASS' : 'FAIL'}]`);
+
   const allPassed = emiCorrect && cretaPrincipalCorrect && fuelCorrect && depModeCorrect && 
                     driverWearCorrect && keepCheaperPass && sellCheaperPass && invariantPass && 
                     financedPass && paidPass && profileNarrativePass && reconciliationPass &&
                     evPass && driverKmPass && stylePass && odoPass && fuelPricePass &&
-                    cngPass && customPass && cmpPass;
+                    cngPass && customPass && cmpPass &&
+                    sourcingPass && noZeroOrEmpty && coveragePass && labelPass;
 
   return {
     success: allPassed,

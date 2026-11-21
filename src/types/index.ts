@@ -40,6 +40,11 @@ export interface Vehicle {
   depreciationRate: number; // annual rate e.g. 0.11
   firstYearDepreciationRate?: number; // e.g. 0.18 for brand new cars
   resaleEstimate?: number;
+  source?: string | null;
+  verifiedOn?: string | null;
+  cityBasis?: string | null;
+  efficiencyStandard?: 'ARAI' | 'ICAT' | null;
+  efficiencyUnit?: 'km/L' | 'km/kg' | 'kWh/100 km' | 'km/kWh' | null;
   image: string;
   images?: VehicleImages;
   color?: string;
@@ -55,6 +60,55 @@ export interface Vehicle {
     fuelTankLiters: number;
     warrantyYears: number;
   };
+}
+
+export type CoverageStatus = 'partial' | 'complete';
+
+export interface ModelCoverage {
+  baseModelId: string;
+  coverage: CoverageStatus;
+  listedTrims: number;
+  knownTrims: number | null;
+  sourceUrl?: string;
+  verifiedOn?: string;
+  cityBasis?: string;
+  notes?: string;
+}
+
+/**
+ * VehicleVariant captures exactly what differs across verified trim levels of
+ * the same base model. The base Vehicle entry in INITIAL_VEHICLES stays
+ * unchanged and represents the "default" (highest-spec seeded) variant.
+ *
+ * Rules:
+ *  - variantId must be globally unique (kebab-case).
+ *  - baseModelId must match an INITIAL_VEHICLES id.
+ *  - All numeric values must be verified from manufacturer/ARAI data.
+ *  - Unknown values stay null — never 0 or fabricated.
+ */
+export interface VehicleVariant {
+  variantId: string;           // globally unique e.g. 'tata-nexon-smart-plus-mt'
+  baseModelId: string;         // matches an INITIAL_VEHICLES id
+  label: string;               // display name e.g. 'Smart+ 1.2 MT'
+  fuelType: FuelType;
+  energyType?: EnergyType;
+  purchasePrice: number | null;       // verified ex-showroom INR
+  expectedMileage: number | null;     // km/L or km/kWh (ARAI certified)
+  efficiencyUnit?: 'km/L' | 'km/kg' | 'kWh/100 km' | 'km/kWh' | null;
+  efficiencyStandard?: 'ARAI' | 'ICAT' | null;
+  cityBasis?: string | null;          // e.g. 'Delhi'
+  source?: string | null;             // official / verified source URL
+  verifiedOn?: string | null;         // ISO date e.g. '2026-10-17'
+  depreciationRate: number;    // annual rate e.g. 0.09
+  firstYearDepreciationRate?: number;
+  maintenanceEstimate: number; // annual INR estimate
+  insuranceEstimate: number;   // annual INR estimate
+  transmission: string;        // display e.g. '5-Speed Manual'
+  engineLabel?: string | null;
+  powerLabel?: string | null;
+  torqueLabel?: string | null;
+  energyConsumptionKwhPer100Km?: number | null;
+  batteryCapacityKwh?: number | null;
 }
 
 export interface Driver {

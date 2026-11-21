@@ -1,13 +1,14 @@
 import React from 'react';
-import { Gauge, Car, Scale, Wrench, Settings, Sun, Moon, Plus } from 'lucide-react';
+import { Gauge, Car, Scale, Wrench, Settings, Sun, Moon, Plus, Library } from 'lucide-react';
 import { Vehicle } from '../types';
 import { useTheme } from './theme';
 import { cx } from './kit';
 
-export type Tab = 'overview' | 'mycar' | 'decide' | 'services' | 'profile';
+export type Tab = 'overview' | 'mycar' | 'decide' | 'services' | 'profile' | 'browse';
 const NAV: { id: Tab; label: string; icon: React.ElementType; group: string }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge, group: 'Know' },
   { id: 'mycar', label: 'My Car', icon: Car, group: 'Know' },
+  { id: 'browse', label: 'Browse', icon: Library, group: 'Discover' },
   { id: 'decide', label: 'Decide', icon: Scale, group: 'Decide' },
   { id: 'services', label: 'Services', icon: Wrench, group: 'Act' },
 ];
@@ -173,7 +174,7 @@ export const Shell: React.FC<{
         {/* Mobile bottom nav */}
         <nav
           aria-label="Primary"
-          className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-paper/95 backdrop-blur border-t border-line grid grid-cols-4 pb-[env(safe-area-inset-bottom)]"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-paper/95 backdrop-blur border-t border-line grid grid-cols-5 pb-[env(safe-area-inset-bottom)]"
         >
           {NAV.map(n => (
             <button

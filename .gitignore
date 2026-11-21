@@ -9,3 +9,5 @@ coverage/
 .idea/
 *.iml
 .kilo/
+.vercel/
+.turbo/

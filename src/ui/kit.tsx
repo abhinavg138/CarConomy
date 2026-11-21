@@ -57,6 +57,30 @@ export const Meter: React.FC<{ pct: number; tone?: 'good' | 'warn' | 'bad' }> = 
   </div>
 );
 
+export const InfoTip: React.FC<{ term: string; explanation: string; children?: React.ReactNode }> = ({ term, explanation, children }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="inline-flex items-center gap-1 relative">
+      <span>{children ?? term}</span>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        aria-label={`About ${term}`}
+        className="w-4 h-4 rounded-full border border-line text-[10px] text-mute hover:text-ink hover:border-ink inline-flex items-center justify-center cursor-pointer transition-colors"
+      >
+        ?
+      </button>
+      {open && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 rounded-xl bg-ink text-paper text-xs leading-snug shadow-xl z-50 pointer-events-none">
+          {explanation}
+        </span>
+      )}
+    </span>
+  );
+};
+
 const loadedImageCache = new Set<string>();
 
 /** Honest vehicle image: exact angle only, no cross-angle substitution; fallback names the car. */

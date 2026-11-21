@@ -56,14 +56,58 @@ export default function App() {
   const [ownership, setOwnership] = useState<OwnershipProfile>(() => load('ownership', INITIAL_OWNERSHIP_PROFILE));
 
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false);
+  const [decideMode, setDecideMode] = useState<'keep' | 'buy'>('buy');
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [decideTarget, setDecideTarget] = useState<{
     vehicleId: string;
     variantId: string | null;
   } | null>(null);
 
+  const handleTabChange = (t: Tab, mode?: 'keep' | 'buy') => {
+    setTab(t);
+    if (mode) {
+      setDecideMode(mode);
+    }
+  };
+
   const handleCheckAffordability = (vehicleId: string, variantId: string | null) => {
     setDecideTarget({ vehicleId, variantId });
+    setDecideMode('buy');
     setTab('decide');
+  };
+
+  const handleRunDemo = () => {
+    setActiveId('tata-nexon');
+    setDrivers([
+      {
+        id: 'driver-1',
+        name: 'Primary Driver',
+        dailyKm: 40, // 1,200 km/month
+        role: 'Me',
+        drivingStyle: 'MODERATE',
+        cityHighwaySplit: 70,
+      },
+    ]);
+    setOwnership({
+      ...INITIAL_OWNERSHIP_PROFILE,
+      city: 'NCR / Delhi',
+      fuelPrice: 96.72,
+      ownershipYears: 5,
+    });
+    setFinance({
+      ...INITIAL_FINANCIAL_PROFILE,
+      householdIncome: 150000,
+      downPayment: 300000,
+      interestRate: 8.85,
+      loanTenureYears: 5,
+    });
+    setDecideTarget({ vehicleId: 'tata-punch-ev', variantId: null });
+    setDecideMode('buy');
+    setIsDemoMode(true);
+    try {
+      sessionStorage.setItem('cc_has_calculated', '1');
+    } catch {}
+    setTab('overview');
   };
 
   useEffect(() => {
@@ -133,11 +177,13 @@ export default function App() {
       {booting && <SplashLoader onDone={handleBooted} />}
       <Shell
         tab={tab}
-        onTab={setTab}
+        onTab={handleTabChange}
         vehicles={vehicles}
         activeId={vehicle.id}
         onPick={setActiveId}
         onOpenAddCar={() => setIsAddCarModalOpen(true)}
+        onRunDemo={handleRunDemo}
+        isDemoMode={isDemoMode}
       >
         {tab === 'overview' && (
           <Overview
@@ -147,8 +193,13 @@ export default function App() {
             drivers={drivers}
             ownership={ownership}
             eco={eco}
-            onGo={setTab}
+            onGo={handleTabChange}
             onPickVehicle={setActiveId}
+            onUpdateVehicle={handleUpdateVehicle}
+            onUpdateOwnership={setOwnership}
+            onUpdateFinance={setFinance}
+            onUpdateDrivers={setDrivers}
+            onRunDemo={handleRunDemo}
           />
         )}
         {tab === 'mycar' && (
@@ -166,12 +217,12 @@ export default function App() {
             onAddVehicle={handleAddVehicle}
             onUpdateVehicle={handleUpdateVehicle}
             onDeleteVehicle={handleDeleteVehicle}
-            onGo={setTab}
+            onGo={handleTabChange}
           />
         )}
         {tab === 'browse' && (
           <Browse
-            onGo={setTab}
+            onGo={handleTabChange}
             onCheckAffordability={handleCheckAffordability}
             onOpenAddCar={() => setIsAddCarModalOpen(true)}
           />
@@ -184,9 +235,9 @@ export default function App() {
             drivers={drivers}
             ownership={ownership}
             finance={finance}
-            onGo={setTab}
-            initialMode={decideTarget ? 'buy' : undefined}
-            initialTargetVehicleId={decideTarget?.vehicleId}
+            onGo={handleTabChange}
+            initialMode={decideMode}
+            initialTargetVehicleId={decideTarget?.vehicleId || 'tata-punch-ev'}
             initialTargetVariantId={decideTarget?.variantId}
             onOpenAddCar={() => setIsAddCarModalOpen(true)}
           />

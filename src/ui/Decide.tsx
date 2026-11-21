@@ -3,7 +3,7 @@ import { Vehicle, Driver, OwnershipProfile, FinancialProfile, CalculatedEconomic
 import { calculateComparison, evaluateJudgeProfileRecommendation } from '../utils/calculator';
 import { formatINR, formatCostPerKm } from '../utils/formatters';
 import { getVariantsForModel, applyVariantToVehicle, getModelCoverage } from '../data/vehicleVariants';
-import { Eyebrow, H1, Big, Row, Segmented, Chip, NextStep, VehicleImage, Meter, cx } from './kit';
+import { Eyebrow, H1, Big, Row, Segmented, Chip, NextStep, VehicleImage, Meter, InfoTip, cx } from './kit';
 import { Tab } from './Shell';
 
 export const Decide: React.FC<{
@@ -339,14 +339,18 @@ const Buy: React.FC<{
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-[11px] text-mute uppercase tracking-wider font-semibold">
-              Affordability Check · {effectiveB.make} {effectiveB.model} ({effectiveB.variant})
+              Can I afford this car? · {effectiveB.make} {effectiveB.model} ({effectiveB.variant})
             </span>
             <p className="font-display text-2xl mt-1">
               <span className={cx(tone(ecoB) === 'good' ? 'text-good' : tone(ecoB) === 'warn' ? 'text-accent' : 'text-bad')}>
                 {ecoB.financialFitTier}
               </span>
               <span className="text-mute font-normal text-base"> · </span>
-              <span className="num">{formatINR(ecoB.monthlyCarPayment)}/mo EMI</span>
+              <span className="num">
+                <InfoTip term="Monthly EMI" explanation="Equated Monthly Installment: the fixed payment made to the bank each month to repay your vehicle loan.">
+                  {formatINR(ecoB.monthlyCarPayment)}/mo EMI
+                </InfoTip>
+              </span>
             </p>
           </div>
           <div className="sm:text-right">
